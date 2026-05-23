@@ -1,0 +1,730 @@
+// controllers/cronController.js
+//
+// Two endpoints called by your third-party cron service (e.g. cron-job.org):
+//
+//   POST /api/cron/daily   — midnight every day (00:00 IST)
+//     • Wipes previous day's TodayEvent records
+//     • Fetches today's events from Calendarific + Google Calendar
+//     • Merges in any CustomEvent whose date matches today (MM-DD or YYYY-MM-DD)
+//     • Inserts deduplicated results into TodayEvent collection
+//
+//   POST /api/cron/yearly  — once per year on Jan 1 (00:01 IST)
+//     • Deletes all YearEvent records for the previous year
+//     • Fetches all 12 months from Calendarific + Google Calendar
+//     • Inserts deduplicated results into YearEvent collection
+//
+// Security: protect both routes with a shared secret header
+//   Set CRON_SECRET in .env; third-party cron service sends:
+//     Authorization: Bearer <CRON_SECRET>
+
+import axios from "axios";
+import * as cheerio from "cheerio";
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import TodayEvent from "../models/TodayEventModel.js";
+import YearEvent from "../models/YearEventModel.js";
+import CustomEvent from "../models/CustomEventModel.js";
+import {
+  fetchGoogleCalendarToday,
+  fetchGoogleCalendarHolidays,
+} from "../services/googleCalendarService.js";
+import { normalizeKey } from "./eventController.js";
+import fs from "fs";
+puppeteer.use(StealthPlugin());
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function todayISO() {
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kolkata",
+  });
+}
+
+const MONTHS = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+];
+
+const HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
+function todayMMDD() {
+  return todayISO().slice(5);
+}
+
+function deduplicateEvents(events) {
+  const seen = new Set();
+  return events.filter((e) => {
+    const key = normalizeKey(e.name, e.date);
+    if (!key) return false;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+async function fetchCalendarificToday() {
+  const apiKey = process.env.CALENDARIFIC_API_KEY;
+
+  if (!apiKey) {
+    console.warn("⚠️ [Daily Cron] CALENDARIFIC_API_KEY not set — skipping");
+
+    return [];
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const todayISO = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  const mmdd = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  const results = [];
+
+  // ─────────────────────────────────────
+  // 1. Fetch LIVE India events only
+  // ─────────────────────────────────────
+
+  try {
+    const { data } = await axios.get(
+      "https://calendarific.com/api/v2/holidays",
+      {
+        params: {
+          api_key: apiKey,
+          country: "IN",
+          year,
+          month,
+          day,
+          type: "national,local,observance",
+        },
+        timeout: 10000,
+      },
+    );
+
+    const holidays = data?.response?.holidays || [];
+
+    holidays.forEach((h) => {
+      results.push({
+        name: h.name || "",
+        description: h.description || "",
+        date: todayISO,
+        isAnnual: false,
+        region: "national",
+        category:
+          Array.isArray(h.type) && h.type.length > 0 ? h.type[0] : "Holiday",
+        emoji: "🇮🇳",
+        country: "India",
+        tags: [h.name?.toLowerCase?.() || ""],
+        promptHint: "",
+        source: "calendarific",
+      });
+    });
+  } catch (err) {
+    console.error("❌ [Daily Cron] Calendarific IN error:", err.message);
+  }
+
+  try {
+    const dbEvents = await YearEvent.find({
+      isActive: true,
+
+      $or: [
+        // YYYY-MM-DD
+        { date: todayISO },
+        // MM-DD annual
+        { date: mmdd },
+      ],
+
+      // Exclude India yearly
+      // Calendarific events
+
+      $nor: [
+        { source: "calendarific", country: "India" },
+        { category: "custom", source: "local" },
+      ],
+    });
+
+    dbEvents.forEach((e) => {
+      results.push({
+        name: e.name || "",
+        description: e.description || "",
+        date: todayISO,
+        isAnnual: e.isAnnual,
+        region: e.region,
+        category: e.category,
+        emoji: e.emoji || "🎉",
+        country: e.country || "",
+        tags: e.tags || [],
+        promptHint: e.promptHint || "",
+        source: e.source || "local",
+      });
+    });
+  } catch (err) {
+    console.error("❌ [Daily Cron] DB events fetch error:", err.message);
+  }
+
+  const uniqueMap = new Map();
+
+  for (const e of results) {
+    const key = normalizeKey(e.name, e.date);
+    if (!key) continue;
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, e);
+    }
+  }
+
+  return [...uniqueMap.values()];
+}
+
+async function fetchCalendarificYear(year) {
+  const apiKey = process.env.CALENDARIFIC_API_KEY;
+
+  // Check API key
+
+  if (!apiKey) {
+    console.warn("⚠️ [Yearly Cron] CALENDARIFIC_API_KEY not set — skipping");
+
+    return [];
+  }
+
+  // ─────────────────────────────────────
+  // Countries
+  // ─────────────────────────────────────
+
+  const countries = [
+    {
+      code: "IN",
+      country: "India",
+      region: "national",
+      emoji: "🇮🇳",
+    },
+
+    {
+      code: "US",
+      country: "United States",
+      region: "international",
+      emoji: "🇺🇸",
+    },
+
+    {
+      code: "GB",
+      country: "United Kingdom",
+      region: "international",
+      emoji: "🇬🇧",
+    },
+  ];
+
+  const results = [];
+
+  try {
+    // ───────────────────────────────────
+    // Fetch all countries
+    // ───────────────────────────────────
+
+    for (const c of countries) {
+      try {
+        const { data } = await axios.get(
+          "https://calendarific.com/api/v2/holidays",
+          {
+            params: {
+              api_key: apiKey,
+              country: c.code,
+              year,
+              type: "national,local,observance",
+            },
+            timeout: 15000,
+          },
+        );
+
+        const holidays = data?.response?.holidays || [];
+
+        // ───────────────────────────────
+        // Map holidays
+        // ───────────────────────────────
+
+        for (const h of holidays) {
+          results.push({
+            name: h.name || "",
+            description: h.description || "",
+            // Convert YYYY-MM-DD
+            // to MM-DD for recurring
+            date: h.date?.iso || "",
+            isAnnual: h.isAnnual,
+            region: c.region,
+            category:
+              Array.isArray(h.type) && h.type.length > 0
+                ? h.type[0]
+                : "Holiday",
+            emoji: c.emoji,
+            country: c.country,
+            tags: [h.name?.toLowerCase?.() || ""],
+            promptHint: "",
+            source: "calendarific",
+          });
+        }
+
+        console.log(
+          `✅ [Yearly Cron] Fetched ${holidays.length} ${c.code} events`,
+        );
+      } catch (err) {
+        console.error(
+          `❌ [Yearly Cron] Calendarific ${c.code} Error:`,
+          err?.response?.data || err.message,
+        );
+      }
+    }
+
+    // ───────────────────────────────────
+    // Remove duplicates
+    // Same:
+    //   name + date
+    // ───────────────────────────────────
+
+    const uniqueMap = new Map();
+
+    for (const e of results) {
+      const key = normalizeKey(e.name, e.date);
+
+      if (!key) continue;
+
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, e);
+      }
+    }
+
+    const uniqueResults = [...uniqueMap.values()];
+
+    console.log(
+      `✅ [Yearly Cron] Final unique Calendarific events: ${uniqueResults.length}`,
+    );
+
+    return uniqueResults;
+  } catch (err) {
+    console.error(
+      "❌ [Yearly Cron] Calendarific Error:",
+      err?.response?.data || err.message,
+    );
+
+    return [];
+  }
+}
+
+// ── Google Calendar: full year (all 12 months) ────────────────────────────────
+async function fetchGoogleCalendarYear(year) {
+  try {
+    const events = await fetchGoogleCalendarHolidays({
+      year,
+    });
+
+    return events;
+  } catch (err) {
+    console.warn("⚠️ [Yearly Cron] Google Calendar error:", err.message);
+
+    return [];
+  }
+}
+
+// ─── Scrape one month page ───────────────────────────────────────────────────
+async function fetchMonthFestivals(month) {
+  const url = `https://www.drikpanchang.com/festivals/month/festivals-${month}.html`;
+  console.log(`🔄 Fetching: ${url}`);
+
+  const { data } = await axios.get(url, { headers: HEADERS });
+  const $ = cheerio.load(data);
+  const results = [];
+  const seen = new Set();
+
+  $("a.dpEvent").each((_, el) => {
+    const name = $(el).find(".dpEventName").text().trim();
+    const rawDate = $(el).find(".dpEventGregDate").text().trim();
+    const href = $(el).attr("href") || "";
+
+    if (!name || !rawDate || seen.has(name)) return;
+    seen.add(name);
+
+    // "January 14, 2026, Wednesday" → strip weekday → parse
+    const datePart = rawDate.replace(/,\s*\w+$/, "").trim();
+    const parsedDate = new Date(datePart);
+    if (isNaN(parsedDate)) {
+      console.warn(`  ⚠️  Could not parse date: "${rawDate}" for "${name}"`);
+      return;
+    }
+
+    results.push({
+      name,
+      description: "",
+      date: parsedDate.toLocaleDateString("en-CA", {
+        timeZone: "Asia/Kolkata",
+      }),
+      month: month.charAt(0).toUpperCase() + month.slice(1),
+      detailUrl: href.startsWith("http")
+        ? href
+        : `https://www.drikpanchang.com${href}`,
+      isAnnual: false,
+      region: "telangana",
+      category: "hindu_festival",
+      emoji: "🛕",
+      country: "India",
+      tags: [name.toLowerCase()],
+      source: "drik_panchang",
+    });
+  });
+
+  console.log(`  ✅ ${results.length} events found in ${month}`);
+  return results;
+}
+
+// ─── Scrape all 12 months ────────────────────────────────────────────────────
+async function fetchAllMonthsFestivals() {
+  const allResults = [];
+
+  for (const month of MONTHS) {
+    try {
+      const events = await fetchMonthFestivals(month);
+      allResults.push(...events);
+
+      // Polite delay between requests to avoid rate limiting
+      await new Promise((r) => setTimeout(r, 1000));
+    } catch (err) {
+      console.error(`  ❌ Failed for ${month}: ${err.message}`);
+    }
+  }
+
+  // Deduplicate across months by name+date
+  const seen = new Set();
+
+  const deduped = allResults.filter((e) => {
+    const key = normalizeKey(e.name, e.date);
+    if (!key) return false;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+
+  console.log(
+    `\n🎉 Total: ${deduped.length} unique festivals across all months`,
+  );
+  return deduped;
+}
+
+async function fetchDrikTeluguYear(year) {
+  try {
+    const url = `https://www.drikpanchang.com/telugu/calendar/telugu-calendar.html?year=${year}`;
+    console.log("🔄 Fetching:", url);
+
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+
+    const $ = cheerio.load(data);
+    const results = [];
+
+    // Each event is an <a class="dpEvent"> tag
+    $("a.dpEvent").each((_, el) => {
+      const name = $(el).find(".dpEventName").text().trim();
+
+      // Date format: "January 1, 2026, Thursday"
+      const rawDate = $(el).find(".dpEventGregDate").text().trim();
+
+      if (!name || !rawDate) return;
+
+      // Strip the weekday: "January 1, 2026, Thursday" → "January 1, 2026"
+      const datePart = rawDate.replace(/,\s*\w+$/, "").trim();
+      const parsedDate = new Date(datePart);
+
+      if (isNaN(parsedDate)) {
+        console.warn(`⚠️ Could not parse date: "${rawDate}"`);
+        return;
+      }
+
+      const isoDate = parsedDate.toISOString().split("T")[0];
+
+      results.push({
+        name,
+        description: "",
+        date: isoDate,
+        isAnnual: true,
+        region: "telangana",
+        category: "telugu_calendar",
+        emoji: "🕉️",
+        country: "India",
+        tags: [name.toLowerCase()],
+        promptHint: "",
+        source: "drik_panchang",
+      });
+    });
+
+    console.log(`✅ Drik fetched ${results.length} events`);
+
+    return results;
+  } catch (err) {
+    console.error("❌ Drik scrape error:", err.message);
+    return [];
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/cron/daily
+// Called every day at midnight by the third-party cron service.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const runDailyCron = async (req, res) => {
+  const today = todayISO();
+
+  const mmdd = todayMMDD();
+  console.log(today);
+
+  console.log(`🔄 [Daily Cron] Starting daily event refresh for ${today}`);
+
+  try {
+    // ─────────────────────────────────────
+    // 1. Delete stale TodayEvent records
+    // ─────────────────────────────────────
+
+    const deleted = await TodayEvent.deleteMany({
+      fetchDate: { $ne: today },
+    });
+
+    if (deleted.deletedCount > 0) {
+      console.log(
+        `🧹 [Daily Cron] Removed ${deleted.deletedCount} stale TodayEvent(s)`,
+      );
+    }
+
+    // ─────────────────────────────────────
+    // 2. Fetch API events in parallel
+    // ─────────────────────────────────────
+
+    const [calEvents, gcalEvents] = await Promise.all([
+      fetchCalendarificToday(),
+
+      fetchGoogleCalendarToday().catch((err) => {
+        console.warn("⚠️ [Daily Cron] Google Calendar error:", err.message);
+
+        return [];
+      }),
+    ]);
+
+    // ─────────────────────────────────────
+    // 3. Fetch matching custom events
+    // ─────────────────────────────────────
+
+    const customEvents = await YearEvent.find({
+      isActive: true,
+
+      $or: [{ category: "custom" }, { source: "drik_panchang" }],
+      $or: [{ date: today }, { date: mmdd }],
+    });
+
+    // Map custom events
+    const customMapped = customEvents.map((e) => ({
+      name: e.name,
+      description: e.description,
+      date: today,
+      region: e.region || "custom",
+      category: e.category || "custom",
+      emoji: e.emoji || "🎉",
+      tags: e.tags || [],
+      promptHint: e.promptHint || "",
+      source: "custom",
+      isActive: true,
+      fetchDate: today,
+      customEventId: e._id,
+    }));
+
+    // ─────────────────────────────────────
+    // 4. Deduplicate API events
+    // ─────────────────────────────────────
+
+    const apiEvents = deduplicateEvents([
+      ...calEvents.map((e) => ({
+        ...e,
+        fetchDate: today,
+      })),
+
+      ...gcalEvents.map((e) => ({
+        ...e,
+        fetchDate: today,
+      })),
+    ]);
+
+    // ─────────────────────────────────────
+    // 5. Combine all events
+    // ─────────────────────────────────────
+
+    const allEvents = [...apiEvents, ...customMapped];
+
+    // ─────────────────────────────────────
+    // 6. Fetch existing today events
+    // ─────────────────────────────────────
+
+    const existingTodayEvents = await TodayEvent.find({
+      fetchDate: today,
+    }).select("name date");
+
+    // Create unique keys
+    const existingKeys = new Set(
+      existingTodayEvents.map((e) => normalizeKey(e.name, e.date)),
+    );
+
+    // ─────────────────────────────────────
+    // 7. Filter only NEW events
+    // ─────────────────────────────────────
+
+    const allNew = allEvents.filter((e) => {
+      const key = normalizeKey(e.name, e.date);
+
+      if (!key) return false;
+
+      return !existingKeys.has(key);
+    });
+
+    // ─────────────────────────────────────
+    // 8. Insert only NEW events
+    // ─────────────────────────────────────
+
+    if (allNew.length > 0) {
+      await TodayEvent.insertMany(allNew, {
+        ordered: false,
+      });
+
+      console.log(`✅ [Daily Cron] Inserted ${allNew.length} NEW event(s)`);
+    } else {
+      console.log("✅ [Daily Cron] No new events to insert");
+    }
+
+    // ─────────────────────────────────────
+    // 9. Final Response
+    // ─────────────────────────────────────
+
+    return res.json({
+      success: true,
+      date: today,
+      inserted: allNew.length,
+      breakdown: {
+        calendarific: calEvents.length,
+        googleCalendar: gcalEvents.length,
+        custom: customMapped.length,
+      },
+    });
+  } catch (err) {
+    console.error("❌ [Daily Cron] Error:", err.message);
+
+    return res.status(500).json({
+      success: false,
+
+      message: err.message,
+    });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/cron/yearly
+// Called once on Jan 1 by the third-party cron service.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const runYearlyCron = async (req, res) => {
+  const currentYear = new Date().getFullYear();
+  const prevYear = currentYear - 1;
+
+  try {
+    // 1. Delete old events
+    await YearEvent.deleteMany({
+      $or: [
+        { source: "calendarific", eventYear: prevYear },
+        { source: "google_calendar", eventYear: prevYear },
+        { source: "drik_panchang", eventYear: prevYear },
+        { category: "custom", isAnnual: false, eventYear: prevYear },
+      ],
+    });
+
+    // 2. Skip if already fetched
+    const alreadyFetched = await YearEvent.findOne({
+      eventYear: currentYear,
+      source: { $in: ["calendarific", "google_calendar", "drik_panchang"] },
+    });
+    if (alreadyFetched) {
+      return res.json({
+        success: true,
+        message: `Already fetched for ${currentYear}`,
+        skipped: true,
+      });
+    }
+
+    // 3. Fetch all sources in parallel
+    const [calEvents, gcalEvents, teluguEvents, monthlyEvents] =
+      await Promise.all([
+        fetchCalendarificYear(currentYear),
+        fetchGoogleCalendarYear(currentYear).catch(() => []),
+        fetchDrikTeluguYear(currentYear).catch(() => []),
+        fetchAllMonthsFestivals().catch(() => []),
+      ]);
+
+    // 4. Deduplicate + tag with year
+    const allEvents = deduplicateEvents([
+      ...calEvents,
+      ...gcalEvents,
+      ...teluguEvents,
+      ...monthlyEvents,
+    ]).map((e) => ({ ...e, eventYear: currentYear }));
+
+    // 5. Filter already in DB
+    const existing = await YearEvent.find({ eventYear: currentYear }).select(
+      "name date",
+    );
+    const existingKeys = new Set(
+      existing.map((e) => normalizeKey(e.name, e.date)),
+    );
+    const newEvents = allEvents.filter((e) => {
+      const key = normalizeKey(e.name, e.date);
+
+      if (!key) return false;
+
+      return !existingKeys.has(key);
+    });
+
+    // 6. Insert
+    if (newEvents.length > 0) {
+      await YearEvent.insertMany(newEvents, { ordered: false });
+    }
+
+    return res.json({
+      success: true,
+      year: currentYear,
+      inserted: newEvents.length,
+      breakdown: {
+        calendarific: calEvents.length,
+        googleCalendar: gcalEvents.length,
+        teluguEvents: teluguEvents.length,
+        monthlyFestivals: monthlyEvents.length,
+      },
+    });
+  } catch (err) {
+    console.error("❌ [Yearly Cron] Error:", err.message);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export default { runDailyCron, runYearlyCron };

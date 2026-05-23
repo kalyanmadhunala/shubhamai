@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# env
+.env
+
+# react native
+android/.gradle
+android/app/build
+android/build
+ios/build
+
+# logs
+npm-debug.log
+yarn-error.log
+
+# macOS
+.DS_Store
+
+# vscode
+.vscode/
+
+# local uploads
+uploads/
+
+# generated files
+dist/
+build/
