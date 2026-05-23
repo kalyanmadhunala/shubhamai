@@ -41,7 +41,7 @@ export default function SplashScreen({ navigation }) {
           return;
         }
 
-        // Optional minimum splash duration
+        // Minimum splash delay
         const minDelay = new Promise(resolve => setTimeout(resolve, 1800));
 
         // Wake backend server
@@ -53,10 +53,9 @@ export default function SplashScreen({ navigation }) {
 
         if (!response.ok || !data.success) {
           toast.error(data?.message || 'Unable to connect server');
+          setLoadingText('Server Error');
           return;
         }
-
-        await response.json();
 
         if (isMounted) {
           setLoadingText('Launching App...');
@@ -77,6 +76,7 @@ export default function SplashScreen({ navigation }) {
         }
       }
     };
+
     wakeUpServer();
 
     return () => {
