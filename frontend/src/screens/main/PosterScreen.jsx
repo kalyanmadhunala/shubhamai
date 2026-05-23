@@ -170,6 +170,35 @@ luxury + minimal + modern + festive
 according to the event naturally.
 
 ━━━━━━━━━━━━━━━━━━
+🖼️ ATTACHED IMAGE HANDLING
+━━━━━━━━━━━━━━━━━━
+
+If an image is attached:
+
+- Use the uploaded image clearly and naturally in the poster
+- Preserve the person's real facial features
+- Keep the face sharp, realistic, and recognizable
+- Do NOT distort the face
+- Do NOT change skin tone unnaturally
+- Do NOT generate a fake face
+- Blend the image professionally into the design
+
+Image placement should intelligently adapt according to the event.
+
+Placement rules:
+- Place the person image in a balanced position
+- Usually lower section or side section unless composition requires otherwise
+- Avoid covering headline text
+- Avoid awkward cropping
+- Keep proper spacing around the face
+- Add soft glow or premium framing if suitable
+- Use clean cutout blending if needed
+- Maintain professional poster composition
+- Better keep the person left side of the bottom business details
+
+The attached image should feel naturally integrated into the poster design and visually premium.
+
+━━━━━━━━━━━━━━━━━━
 🌈 BACKGROUND MOOD
 ━━━━━━━━━━━━━━━━━━
 
@@ -504,6 +533,41 @@ The background should feel:
 - Beautifully balanced
 
 Avoid overdesigning minimal occasions.
+
+━━━━━━━━━━━━━━━━━━
+🖼️ ATTACHED IMAGE HANDLING
+━━━━━━━━━━━━━━━━━━
+
+If an image is attached:
+
+- Use the uploaded image clearly and naturally in the poster
+- Preserve the person's real facial features
+- Keep the face sharp, realistic, and recognizable
+- Do NOT distort the face
+- Do NOT change skin tone unnaturally
+- Do NOT generate a fake face
+- Blend the image professionally into the design
+
+Image placement should intelligently adapt according to the event.
+
+Examples:
+- Birthday → stylish portrait placement with vibrant effects
+- Anniversary → elegant romantic side-by-side composition
+- Congratulations → premium professional portrait placement
+- Memorial/Emotional → soft cinematic portrait styling
+- Festival wishes → decorative festive portrait integration
+
+Placement rules:
+- Place the person image in a balanced position
+- Usually lower section or side section unless composition requires otherwise
+- Avoid covering headline text
+- Avoid awkward cropping
+- Keep proper spacing around the face
+- Add soft glow or premium framing if suitable
+- Use clean cutout blending if needed
+- Maintain professional poster composition
+
+The attached image should feel naturally integrated into the poster design and visually premium.
 
 ━━━━━━━━━━━━━━━━━━
 👤 PERSON FOCUS
@@ -1108,7 +1172,7 @@ export default function PosterScreen({ navigation, route }) {
               style={{
                 fontSize: moderateScale(16),
                 fontFamily: 'Inter-Bold',
-                textAlign:"center",
+                textAlign: 'center',
                 color: '#1A1A2E',
               }}
             >
@@ -1121,7 +1185,7 @@ export default function PosterScreen({ navigation, route }) {
                   fontSize: moderateScale(11),
                   color: '#888',
                   fontFamily: 'Inter-Regular',
-                  textAlign:"center",
+                  textAlign: 'center',
                   marginTop: 2,
                 }}
               >
