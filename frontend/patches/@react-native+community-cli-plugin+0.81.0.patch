@@ -1,0 +1,18 @@
+diff --git a/node_modules/@react-native/community-cli-plugin/dist/commands/start/runServer.js b/node_modules/@react-native/community-cli-plugin/dist/commands/start/runServer.js
+index 5e6e682..37c5f1a 100644
+--- a/node_modules/@react-native/community-cli-plugin/dist/commands/start/runServer.js
++++ b/node_modules/@react-native/community-cli-plugin/dist/commands/start/runServer.js
+@@ -162,7 +162,7 @@ async function runServer(_argv, cliConfig, args) {
+     }
+   );
+   reportEvent = eventsSocketEndpoint.reportEvent;
+-  serverInstance.keepAliveTimeout = 30000;
++  if (serverInstance) { serverInstance.keepAliveTimeout = 30000; }
+   await version.logIfUpdateAvailable(cliConfig, terminalReporter);
+ }
+ function getReporterImpl(customLogReporterPath) {
+@@ -179,3 +179,4 @@ function getReporterImpl(customLogReporterPath) {
+   }
+ }
+ var _default = (exports.default = runServer);
++
