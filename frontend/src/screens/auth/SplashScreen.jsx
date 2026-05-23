@@ -43,7 +43,6 @@ export default function SplashScreen({ navigation }) {
           }, 500);
         }
       } catch (error) {
-
         // Even if server fails, continue app
         if (isMounted) {
           setLoadingText('Offline Mode...');
