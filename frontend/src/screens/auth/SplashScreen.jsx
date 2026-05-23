@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-
+import NetInfo from '@react-native-community/netinfo';
+import { toast, Toaster } from 'sonner-native';
 import { GRADIENTS } from '../../constants/colors';
 import { scale, moderateScale } from '../../utils/responsive';
 import { CONFIG } from '../../constants/config';
@@ -25,6 +26,21 @@ export default function SplashScreen({ navigation }) {
 
     const wakeUpServer = async () => {
       try {
+        // Check internet first
+        const state = await NetInfo.fetch();
+
+        if (!state.isConnected) {
+          toast.error('Check your internet connection');
+
+          setLoadingText('No Internet Connection');
+
+          setTimeout(() => {
+            navigation.replace('Main');
+          }, 1500);
+
+          return;
+        }
+
         // Optional minimum splash duration
         const minDelay = new Promise(resolve => setTimeout(resolve, 1800));
 
@@ -33,7 +49,11 @@ export default function SplashScreen({ navigation }) {
 
         const [response] = await Promise.all([serverRequest, minDelay]);
 
-        const data = await response.json();
+        if (!response.ok) {
+          throw new Error('Server Error');
+        }
+
+        await response.json();
 
         if (isMounted) {
           setLoadingText('Launching App...');
@@ -43,8 +63,9 @@ export default function SplashScreen({ navigation }) {
           }, 500);
         }
       } catch (error) {
-        // Even if server fails, continue app
         if (isMounted) {
+          toast.error('Check your internet connection');
+
           setLoadingText('Offline Mode...');
 
           setTimeout(() => {
@@ -53,7 +74,6 @@ export default function SplashScreen({ navigation }) {
         }
       }
     };
-
     wakeUpServer();
 
     return () => {
@@ -79,6 +99,7 @@ export default function SplashScreen({ navigation }) {
           justifyContent: 'center',
         }}
       >
+      <Toaster richColors />
         {/* Logo */}
         <View
           style={{
