@@ -49,8 +49,11 @@ export default function SplashScreen({ navigation }) {
 
         const [response] = await Promise.all([serverRequest, minDelay]);
 
-        if (!response.ok) {
-          throw new Error('Server Error');
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          toast.error(data?.message || 'Unable to connect server');
+          return;
         }
 
         await response.json();
@@ -99,7 +102,7 @@ export default function SplashScreen({ navigation }) {
           justifyContent: 'center',
         }}
       >
-      <Toaster richColors />
+        <Toaster richColors />
         {/* Logo */}
         <View
           style={{
