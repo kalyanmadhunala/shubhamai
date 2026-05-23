@@ -15,10 +15,11 @@ import { toast, Toaster } from 'sonner-native';
 import { GRADIENTS } from '../../constants/colors';
 import { scale, moderateScale } from '../../utils/responsive';
 import { CONFIG } from '../../constants/config';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SplashScreen({ navigation }) {
   const { width, height } = useWindowDimensions();
-
+  const insets = useSafeAreaInsets();
   const [loadingText, setLoadingText] = useState('Starting Server...');
 
   useEffect(() => {
