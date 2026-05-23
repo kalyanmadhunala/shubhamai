@@ -953,12 +953,21 @@ export default function PosterScreen({ navigation, route }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [promptOptions, setPromptOptions] = useState({
-    businessName: true,
+    businessName: false,
     wisherName: true,
     businessAddress: false,
     phoneNumber: false,
     isTelugu: true,
   });
+
+  useEffect(() => {
+    if (profile) {
+      setPromptOptions(prev => ({
+        ...prev,
+        businessName: !!profile?.businessName,
+      }));
+    }
+  }, [profile]);
 
   const togglePromptOption = key => {
     setPromptOptions(prev => ({
@@ -1413,6 +1422,7 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Business Name',
               subtitle: 'Include business/store name',
               Icon: Building2,
+              isDisplay: !!profile?.businessName,
             },
 
             {
@@ -1420,6 +1430,7 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Wisher Name',
               subtitle: 'Include greeting sender',
               Icon: CircleUserRound,
+              isDisplay: true,
             },
 
             {
@@ -1427,6 +1438,7 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Business Address',
               subtitle: 'Include address in footer',
               Icon: MapPin,
+              isDisplay: !!profile?.businessAddress,
             },
 
             {
@@ -1434,6 +1446,7 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Phone Number',
               subtitle: 'Include contact number',
               Icon: Phone,
+              isDisplay: !!profile?.phone,
             },
 
             {
@@ -1441,111 +1454,114 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Telugu Language',
               subtitle: 'Toggle for poster in Telugu',
               Icon: Languages,
+              isDisplay: true,
             },
-          ].map(item => {
-            const enabled = promptOptions[item.key];
+          ]
+            .filter(item => item.isDisplay)
+            .map(item => {
+              const enabled = promptOptions[item.key];
 
-            const IconComponent = item.Icon;
+              const IconComponent = item.Icon;
 
-            return (
-              <View
-                key={item.key}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-
-                  paddingVertical: verticalScale(12),
-
-                  borderTopWidth: 1,
-                  borderTopColor: '#F1F1F1',
-                }}
-              >
-                {/* Left */}
-
+              return (
                 <View
+                  key={item.key}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    flex: 1,
+                    justifyContent: 'space-between',
+
+                    paddingVertical: verticalScale(12),
+
+                    borderTopWidth: 1,
+                    borderTopColor: '#F1F1F1',
                   }}
                 >
+                  {/* Left */}
+
                   <View
                     style={{
-                      width: scale(40),
-                      height: scale(40),
-                      borderRadius: scale(12),
-
-                      backgroundColor: enabled ? '#EEF4FF' : '#F4F4F4',
-
+                      flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'center',
-
-                      marginRight: scale(12),
+                      flex: 1,
                     }}
                   >
-                    <IconComponent
-                      size={22}
-                      color={enabled ? '#0D47A1' : '#6B7280'}
-                    />
-                  </View>
-
-                  <View style={{ flex: 1 }}>
-                    <Text
+                    <View
                       style={{
-                        fontSize: moderateScale(13),
-                        fontFamily: 'Inter-SemiBold',
-                        color: '#1A1A2E',
+                        width: scale(40),
+                        height: scale(40),
+                        borderRadius: scale(12),
+
+                        backgroundColor: enabled ? '#EEF4FF' : '#F4F4F4',
+
+                        alignItems: 'center',
+                        justifyContent: 'center',
+
+                        marginRight: scale(12),
                       }}
                     >
-                      {item.title}
-                    </Text>
+                      <IconComponent
+                        size={22}
+                        color={enabled ? '#0D47A1' : '#6B7280'}
+                      />
+                    </View>
 
-                    <Text
-                      style={{
-                        fontSize: moderateScale(11),
-                        color: '#8A8A8A',
-                        fontFamily: 'Inter-Regular',
-                        marginTop: 2,
-                      }}
-                    >
-                      {item.subtitle}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: moderateScale(13),
+                          fontFamily: 'Inter-SemiBold',
+                          color: '#1A1A2E',
+                        }}
+                      >
+                        {item.title}
+                      </Text>
+
+                      <Text
+                        style={{
+                          fontSize: moderateScale(11),
+                          color: '#8A8A8A',
+                          fontFamily: 'Inter-Regular',
+                          marginTop: 2,
+                        }}
+                      >
+                        {item.subtitle}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                {/* Toggle */}
+                  {/* Toggle */}
 
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => togglePromptOption(item.key)}
-                  style={{
-                    width: scale(52),
-                    height: scale(30),
-                    borderRadius: scale(15),
-
-                    backgroundColor: enabled ? '#0D47A1' : '#D1D5DB',
-
-                    padding: scale(3),
-
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Animated.View
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => togglePromptOption(item.key)}
                     style={{
-                      width: scale(24),
-                      height: scale(24),
-                      borderRadius: scale(12),
+                      width: scale(52),
+                      height: scale(30),
+                      borderRadius: scale(15),
 
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: enabled ? '#0D47A1' : '#D1D5DB',
 
-                      alignSelf: enabled ? 'flex-end' : 'flex-start',
+                      padding: scale(3),
+
+                      justifyContent: 'center',
                     }}
-                  />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+                  >
+                    <Animated.View
+                      style={{
+                        width: scale(24),
+                        height: scale(24),
+                        borderRadius: scale(12),
+
+                        backgroundColor: '#FFFFFF',
+
+                        alignSelf: enabled ? 'flex-end' : 'flex-start',
+                      }}
+                    />
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
         </View>
         {/* AI Apps */}
 

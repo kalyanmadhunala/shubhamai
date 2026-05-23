@@ -3,13 +3,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_KEY } from '../screens/main/HomeScreen';
 import { ROUTES } from '../navigation/routes';
 
-export async function checkProfileAndNavigate({ navigation, event }) {
+export async function checkProfileAndNavigate({
+  navigation,
+  event,
+}) {
   try {
-    const raw = await AsyncStorage.getItem(PROFILE_KEY);
+    const raw = await AsyncStorage.getItem(
+      PROFILE_KEY,
+    );
 
     const profile = raw ? JSON.parse(raw) : null;
 
-    const hasProfile = profile?.fullName && profile?.phone && profile?.businessName;
+    const hasProfile =
+      profile?.fullName?.trim()?.length > 0;
 
     // PROFILE NOT SETUP
     if (!hasProfile) {
@@ -31,12 +37,16 @@ export async function checkProfileAndNavigate({ navigation, event }) {
       event,
     });
   } catch (error) {
-    console.log('Profile Check Error:', error);
+    console.log(
+      'Profile Check Error:',
+      error,
+    );
 
     navigation.navigate('SettingsTab', {
       screen: ROUTES.PROFILE,
       params: {
         editMode: true,
+        isToast: true,
       },
     });
   }

@@ -102,7 +102,50 @@ export default function SplashScreen({ navigation }) {
           justifyContent: 'center',
         }}
       >
-        <Toaster richColors />
+        <Toaster
+          position="bottom-center"
+          richColors
+          offset={insets.top + 12}
+          visibleToastCount={2}
+          toastOptions={{
+            style: {
+              borderRadius: 16,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1,
+              borderColor: 'rgba(0,0,0,0.06)',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 9999,
+            },
+            titleStyle: {
+              fontFamily: 'Inter-Bold',
+              fontSize: 14,
+              color: '#111827',
+            },
+            descriptionStyle: {
+              fontFamily: 'Inter-Regular',
+              fontSize: 12,
+              color: '#6B7280',
+              lineHeight: 17,
+            },
+            successStyle: {
+              borderLeftWidth: 4,
+              borderLeftColor: '#10B981',
+            },
+            errorStyle: {
+              borderLeftWidth: 4,
+              borderLeftColor: '#EF4444',
+            },
+            infoStyle: {
+              borderLeftWidth: 4,
+              borderLeftColor: '#3B82F6',
+            },
+          }}
+        />
         {/* Logo */}
         <View
           style={{
