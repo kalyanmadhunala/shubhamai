@@ -23,7 +23,6 @@ import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import TodayEvent from "../models/TodayEventModel.js";
 import YearEvent from "../models/YearEventModel.js";
-import CustomEvent from "../models/CustomEventModel.js";
 import {
   fetchGoogleCalendarToday,
   fetchGoogleCalendarHolidays,
@@ -492,9 +491,7 @@ async function fetchDrikTeluguYear(year) {
 
 export const runDailyCron = async (req, res) => {
   const today = todayISO();
-
   const mmdd = todayMMDD();
-  console.log(today);
 
   console.log(`🔄 [Daily Cron] Starting daily event refresh for ${today}`);
 
@@ -534,11 +531,21 @@ export const runDailyCron = async (req, res) => {
     const customEvents = await YearEvent.find({
       isActive: true,
 
-      $or: [{ category: "custom" }, { source: "drik_panchang" }],
-      $or: [{ date: today }, { date: mmdd }],
+      $and: [
+        {
+          $or: [{ category: "custom" }, { source: "drik_panchang" }],
+        },
+
+        {
+          $or: [{ date: today }, { date: mmdd }],
+        },
+      ],
     });
 
-    // Map custom events
+    // ─────────────────────────────────────
+    // 4. Map custom events
+    // ─────────────────────────────────────
+
     const customMapped = customEvents.map((e) => ({
       name: e.name,
       description: e.description,
@@ -548,14 +555,14 @@ export const runDailyCron = async (req, res) => {
       emoji: e.emoji || "🎉",
       tags: e.tags || [],
       promptHint: e.promptHint || "",
-      source: "custom",
+      source: e.source || "custom",
       isActive: true,
       fetchDate: today,
       customEventId: e._id,
     }));
 
     // ─────────────────────────────────────
-    // 4. Deduplicate API events
+    // 5. Deduplicate API events
     // ─────────────────────────────────────
 
     const apiEvents = deduplicateEvents([
@@ -571,38 +578,57 @@ export const runDailyCron = async (req, res) => {
     ]);
 
     // ─────────────────────────────────────
-    // 5. Combine all events
+    // 6. Combine ALL events
     // ─────────────────────────────────────
 
-    const allEvents = [...apiEvents, ...customMapped];
+    const mergedEvents = [...apiEvents, ...customMapped];
 
     // ─────────────────────────────────────
-    // 6. Fetch existing today events
+    // 7. FINAL GLOBAL DEDUPLICATION
+    // ─────────────────────────────────────
+
+    const allEvents = deduplicateEvents(mergedEvents);
+
+    // ─────────────────────────────────────
+    // 8. Fetch existing today events
     // ─────────────────────────────────────
 
     const existingTodayEvents = await TodayEvent.find({
       fetchDate: today,
     }).select("name date");
 
-    // Create unique keys
     const existingKeys = new Set(
       existingTodayEvents.map((e) => normalizeKey(e.name, e.date)),
     );
 
     // ─────────────────────────────────────
-    // 7. Filter only NEW events
+    // 9. Filter only NEW unique events
     // ─────────────────────────────────────
+
+    const seenKeys = new Set();
 
     const allNew = allEvents.filter((e) => {
       const key = normalizeKey(e.name, e.date);
 
       if (!key) return false;
 
-      return !existingKeys.has(key);
+      // Already exists in DB
+      if (existingKeys.has(key)) {
+        return false;
+      }
+
+      // Duplicate inside current batch
+      if (seenKeys.has(key)) {
+        return false;
+      }
+
+      seenKeys.add(key);
+
+      return true;
     });
 
     // ─────────────────────────────────────
-    // 8. Insert only NEW events
+    // 10. Insert NEW events
     // ─────────────────────────────────────
 
     if (allNew.length > 0) {
@@ -616,17 +642,19 @@ export const runDailyCron = async (req, res) => {
     }
 
     // ─────────────────────────────────────
-    // 9. Final Response
+    // 11. Final Response
     // ─────────────────────────────────────
 
     return res.json({
       success: true,
       date: today,
       inserted: allNew.length,
+
       breakdown: {
         calendarific: calEvents.length,
         googleCalendar: gcalEvents.length,
         custom: customMapped.length,
+        finalUnique: allEvents.length,
       },
     });
   } catch (err) {
@@ -634,7 +662,6 @@ export const runDailyCron = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-
       message: err.message,
     });
   }
@@ -649,81 +676,220 @@ export const runYearlyCron = async (req, res) => {
   const currentYear = new Date().getFullYear();
   const prevYear = currentYear - 1;
 
+  console.log(
+    `🔄 [Yearly Cron] Starting yearly refresh for ${currentYear}`,
+  );
+
   try {
-    // 1. Delete old events
-    await YearEvent.deleteMany({
+    // ─────────────────────────────────────
+    // 1. Delete OLD generated events
+    // ─────────────────────────────────────
+
+    const deleted = await YearEvent.deleteMany({
       $or: [
-        { source: "calendarific", eventYear: prevYear },
-        { source: "google_calendar", eventYear: prevYear },
-        { source: "drik_panchang", eventYear: prevYear },
-        { category: "custom", isAnnual: false, eventYear: prevYear },
+        {
+          source: "calendarific",
+          eventYear: prevYear,
+        },
+
+        {
+          source: "google_calendar",
+          eventYear: prevYear,
+        },
+
+        {
+          source: "drik_panchang",
+          eventYear: prevYear,
+        },
+
+        // Remove old one-time custom events
+        {
+          category: "custom",
+          isAnnual: false,
+          eventYear: prevYear,
+        },
       ],
     });
 
+    console.log(
+      `🧹 [Yearly Cron] Removed ${deleted.deletedCount} old event(s)`,
+    );
+
+    // ─────────────────────────────────────
     // 2. Skip if already fetched
+    // ─────────────────────────────────────
+
     const alreadyFetched = await YearEvent.findOne({
       eventYear: currentYear,
-      source: { $in: ["calendarific", "google_calendar", "drik_panchang"] },
+
+      source: {
+        $in: [
+          "calendarific",
+          "google_calendar",
+          "drik_panchang",
+        ],
+      },
     });
+
     if (alreadyFetched) {
+      console.log(
+        `✅ [Yearly Cron] Already fetched for ${currentYear}`,
+      );
+
       return res.json({
         success: true,
-        message: `Already fetched for ${currentYear}`,
         skipped: true,
+        message: `Already fetched for ${currentYear}`,
       });
     }
 
-    // 3. Fetch all sources in parallel
-    const [calEvents, gcalEvents, teluguEvents, monthlyEvents] =
-      await Promise.all([
-        fetchCalendarificYear(currentYear),
-        fetchGoogleCalendarYear(currentYear).catch(() => []),
-        fetchDrikTeluguYear(currentYear).catch(() => []),
-        fetchAllMonthsFestivals().catch(() => []),
-      ]);
+    // ─────────────────────────────────────
+    // 3. Fetch ALL sources in parallel
+    // ─────────────────────────────────────
 
-    // 4. Deduplicate + tag with year
-    const allEvents = deduplicateEvents([
+    const [
+      calEvents,
+      gcalEvents,
+      teluguEvents,
+      monthlyEvents,
+    ] = await Promise.all([
+      fetchCalendarificYear(currentYear),
+
+      fetchGoogleCalendarYear(currentYear).catch((err) => {
+        console.warn(
+          "⚠️ [Yearly Cron] Google Calendar error:",
+          err.message,
+        );
+
+        return [];
+      }),
+
+      fetchDrikTeluguYear(currentYear).catch((err) => {
+        console.warn(
+          "⚠️ [Yearly Cron] Drik Panchang error:",
+          err.message,
+        );
+
+        return [];
+      }),
+
+      fetchAllMonthsFestivals().catch((err) => {
+        console.warn(
+          "⚠️ [Yearly Cron] Monthly Festivals error:",
+          err.message,
+        );
+
+        return [];
+      }),
+    ]);
+
+    // ─────────────────────────────────────
+    // 4. Merge all events
+    // ─────────────────────────────────────
+
+    const mergedEvents = [
       ...calEvents,
       ...gcalEvents,
       ...teluguEvents,
       ...monthlyEvents,
-    ]).map((e) => ({ ...e, eventYear: currentYear }));
+    ];
 
-    // 5. Filter already in DB
-    const existing = await YearEvent.find({ eventYear: currentYear }).select(
-      "name date",
-    );
+    // ─────────────────────────────────────
+    // 5. Global Deduplication
+    // ─────────────────────────────────────
+
+    const allEvents = deduplicateEvents(
+      mergedEvents,
+    ).map((e) => ({
+      ...e,
+      eventYear: currentYear,
+    }));
+
+    // ─────────────────────────────────────
+    // 6. Fetch existing DB events
+    // ─────────────────────────────────────
+
+    const existing = await YearEvent.find({
+      eventYear: currentYear,
+    }).select("name date");
+
     const existingKeys = new Set(
-      existing.map((e) => normalizeKey(e.name, e.date)),
+      existing.map((e) =>
+        normalizeKey(e.name, e.date),
+      ),
     );
+
+    // ─────────────────────────────────────
+    // 7. Filter NEW unique events
+    // ─────────────────────────────────────
+
+    const seenKeys = new Set();
+
     const newEvents = allEvents.filter((e) => {
       const key = normalizeKey(e.name, e.date);
 
       if (!key) return false;
 
-      return !existingKeys.has(key);
+      // Already exists in DB
+      if (existingKeys.has(key)) {
+        return false;
+      }
+
+      // Duplicate inside current batch
+      if (seenKeys.has(key)) {
+        return false;
+      }
+
+      seenKeys.add(key);
+
+      return true;
     });
 
-    // 6. Insert
+    // ─────────────────────────────────────
+    // 8. Insert events
+    // ─────────────────────────────────────
+
     if (newEvents.length > 0) {
-      await YearEvent.insertMany(newEvents, { ordered: false });
+      await YearEvent.insertMany(newEvents, {
+        ordered: false,
+      });
+
+      console.log(
+        `✅ [Yearly Cron] Inserted ${newEvents.length} new event(s)`,
+      );
+    } else {
+      console.log(
+        "✅ [Yearly Cron] No new events to insert",
+      );
     }
+
+    // ─────────────────────────────────────
+    // 9. Final Response
+    // ─────────────────────────────────────
 
     return res.json({
       success: true,
       year: currentYear,
       inserted: newEvents.length,
+
       breakdown: {
         calendarific: calEvents.length,
         googleCalendar: gcalEvents.length,
         teluguEvents: teluguEvents.length,
         monthlyFestivals: monthlyEvents.length,
+        finalUnique: allEvents.length,
       },
     });
   } catch (err) {
-    console.error("❌ [Yearly Cron] Error:", err.message);
-    return res.status(500).json({ success: false, message: err.message });
+    console.error(
+      "❌ [Yearly Cron] Error:",
+      err.message,
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 

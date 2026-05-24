@@ -12,7 +12,7 @@ import { cronAuth } from '../middleware/cronAuth.js';
 
 const router = Router();
 
-router.post('/daily', runDailyCron);
-router.post('/yearly', runYearlyCron);
+router.post('/daily', cronAuth, runDailyCron);
+router.post('/yearly',cronAuth, runYearlyCron);
 
 export default router;

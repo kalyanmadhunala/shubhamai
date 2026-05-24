@@ -10,7 +10,6 @@
 
 import TodayEvent from "../models/TodayEventModel.js";
 import YearEvent from "../models/YearEventModel.js";
-import CustomEvent from "../models/CustomEventModel.js";
 
 // ── Shared dedup helper ────────────────────────────────────────────────────────
 export function normalizeKey(name, date) {
