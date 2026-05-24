@@ -32,7 +32,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health Route
 app.get('/api/health', (_, res) => {
-  return res.sendStatus(200);
+  return res.status(200).json({message: "I am fine you can continue"});
 });
 
 // Routes
