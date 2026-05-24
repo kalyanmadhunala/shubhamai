@@ -493,39 +493,36 @@ export const runDailyCron = async (req, res) => {
   const today = todayISO();
   const mmdd = todayMMDD();
 
-  console.log(`🔄 [Daily Cron] Starting daily event refresh for ${today}`);
+  console.log(`🔄 [Daily Cron] Starting refresh for ${today}`);
 
   try {
     // ─────────────────────────────────────
-    // 1. Delete stale TodayEvent records
+    // 1. DELETE ALL OLD TODAY EVENTS
     // ─────────────────────────────────────
 
-    const deleted = await TodayEvent.deleteMany({
-      fetchDate: { $ne: today },
-    });
+    await TodayEvent.deleteMany({});
 
-    if (deleted.deletedCount > 0) {
-      console.log(
-        `🧹 [Daily Cron] Removed ${deleted.deletedCount} stale TodayEvent(s)`,
-      );
-    }
+    console.log("🧹 [Daily Cron] Cleared old TodayEvent records");
 
     // ─────────────────────────────────────
-    // 2. Fetch API events in parallel
+    // 2. FETCH API EVENTS
     // ─────────────────────────────────────
 
     const [calEvents, gcalEvents] = await Promise.all([
       fetchCalendarificToday(),
 
       fetchGoogleCalendarToday().catch((err) => {
-        console.warn("⚠️ [Daily Cron] Google Calendar error:", err.message);
+        console.warn(
+          "⚠️ [Daily Cron] Google Calendar error:",
+          err.message,
+        );
 
         return [];
       }),
     ]);
 
     // ─────────────────────────────────────
-    // 3. Fetch matching custom events
+    // 3. FETCH CUSTOM EVENTS
     // ─────────────────────────────────────
 
     const customEvents = await YearEvent.find({
@@ -533,22 +530,28 @@ export const runDailyCron = async (req, res) => {
 
       $and: [
         {
-          $or: [{ category: "custom" }, { source: "drik_panchang" }],
+          $or: [
+            { category: "custom" },
+            { source: "drik_panchang" },
+          ],
         },
 
         {
-          $or: [{ date: today }, { date: mmdd }],
+          $or: [
+            { date: today }, // YYYY-MM-DD
+            { date: mmdd },  // MM-DD recurring
+          ],
         },
       ],
     });
 
     // ─────────────────────────────────────
-    // 4. Map custom events
+    // 4. MAP CUSTOM EVENTS
     // ─────────────────────────────────────
 
     const customMapped = customEvents.map((e) => ({
       name: e.name,
-      description: e.description,
+      description: e.description || "",
       date: today,
       region: e.region || "custom",
       category: e.category || "custom",
@@ -562,10 +565,10 @@ export const runDailyCron = async (req, res) => {
     }));
 
     // ─────────────────────────────────────
-    // 5. Deduplicate API events
+    // 5. MAP API EVENTS
     // ─────────────────────────────────────
 
-    const apiEvents = deduplicateEvents([
+    const apiEvents = [
       ...calEvents.map((e) => ({
         ...e,
         fetchDate: today,
@@ -575,13 +578,16 @@ export const runDailyCron = async (req, res) => {
         ...e,
         fetchDate: today,
       })),
-    ]);
+    ];
 
     // ─────────────────────────────────────
-    // 6. Combine ALL events
+    // 6. MERGE ALL EVENTS
     // ─────────────────────────────────────
 
-    const mergedEvents = [...apiEvents, ...customMapped];
+    const mergedEvents = [
+      ...apiEvents,
+      ...customMapped,
+    ];
 
     // ─────────────────────────────────────
     // 7. FINAL GLOBAL DEDUPLICATION
@@ -590,66 +596,31 @@ export const runDailyCron = async (req, res) => {
     const allEvents = deduplicateEvents(mergedEvents);
 
     // ─────────────────────────────────────
-    // 8. Fetch existing today events
+    // 8. INSERT TODAY EVENTS
     // ─────────────────────────────────────
 
-    const existingTodayEvents = await TodayEvent.find({
-      fetchDate: today,
-    }).select("name date");
-
-    const existingKeys = new Set(
-      existingTodayEvents.map((e) => normalizeKey(e.name, e.date)),
-    );
-
-    // ─────────────────────────────────────
-    // 9. Filter only NEW unique events
-    // ─────────────────────────────────────
-
-    const seenKeys = new Set();
-
-    const allNew = allEvents.filter((e) => {
-      const key = normalizeKey(e.name, e.date);
-
-      if (!key) return false;
-
-      // Already exists in DB
-      if (existingKeys.has(key)) {
-        return false;
-      }
-
-      // Duplicate inside current batch
-      if (seenKeys.has(key)) {
-        return false;
-      }
-
-      seenKeys.add(key);
-
-      return true;
-    });
-
-    // ─────────────────────────────────────
-    // 10. Insert NEW events
-    // ─────────────────────────────────────
-
-    if (allNew.length > 0) {
-      await TodayEvent.insertMany(allNew, {
+    if (allEvents.length > 0) {
+      await TodayEvent.insertMany(allEvents, {
         ordered: false,
       });
 
-      console.log(`✅ [Daily Cron] Inserted ${allNew.length} NEW event(s)`);
+      console.log(
+        `✅ [Daily Cron] Inserted ${allEvents.length} event(s)`,
+      );
     } else {
-      console.log("✅ [Daily Cron] No new events to insert");
+      console.log(
+        "⚠️ [Daily Cron] No events found to insert",
+      );
     }
 
     // ─────────────────────────────────────
-    // 11. Final Response
+    // 9. RESPONSE
     // ─────────────────────────────────────
 
     return res.json({
       success: true,
       date: today,
-      inserted: allNew.length,
-
+      inserted: allEvents.length,
       breakdown: {
         calendarific: calEvents.length,
         googleCalendar: gcalEvents.length,
@@ -658,7 +629,10 @@ export const runDailyCron = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ [Daily Cron] Error:", err.message);
+    console.error(
+      "❌ [Daily Cron] Error:",
+      err.message,
+    );
 
     return res.status(500).json({
       success: false,
