@@ -83,6 +83,40 @@ async function fetchGoogleCalendarEvents(calendarId, timeMin, timeMax) {
   }
 }
 
+function detectCategory(item) {
+  const text = (
+    item.description ||
+    item.summary ||
+    ""
+  ).toLowerCase();
+
+  if (text.includes("observance")) {
+    return "Observance";
+  }
+
+  if (text.includes("festival")) {
+    return "Festival";
+  }
+
+  if (text.includes("hindu")) {
+    return "Hindu Festival";
+  }
+
+  if (text.includes("muslim")) {
+    return "Muslim Festival";
+  }
+
+  if (text.includes("christian")) {
+    return "Christian Holiday";
+  }
+
+  if (text.includes("public")) {
+    return "Public Holiday";
+  }
+
+  return "National Holiday";
+}
+
 // ─────────────────────────────────────────────
 // Parse Google Calendar Event
 // ─────────────────────────────────────────────
@@ -96,23 +130,14 @@ function parseGoogleEvent(item, region = "national") {
 
   return {
     name: item.summary || "Unknown Event",
-
     description: item.description || "",
-
     date: rawDate,
-
     isAnnual: true,
-
     region,
-
-    category: "National Holiday",
-
+    category: detectCategory(item),
     emoji: "🇮🇳",
-
     tags: [item.summary?.toLowerCase?.() || ""],
-
     source: "google_calendar",
-
     promptHint: "",
   };
 }
