@@ -173,30 +173,41 @@ according to the event naturally.
 🖼️ ATTACHED IMAGE HANDLING
 ━━━━━━━━━━━━━━━━━━
 
-If an image is attached:
+IMPORTANT:
+Only use a person/photo in the poster IF the user has actually attached one or more images.
 
-- Use the uploaded image clearly and naturally in the poster
+If NO image is attached:
+- Do NOT generate any random person
+- Do NOT create fake human faces
+- Do NOT add AI-generated portraits
+- Do NOT include unknown people
+- Keep the poster fully design-based using only event visuals, typography, decorations, and theme elements
+
+If image(s) are attached:
+
+- Use ONLY the uploaded image(s) in the poster
 - Preserve the person's real facial features
-- Keep the face sharp, realistic, and recognizable
-- Do NOT distort the face
+- Keep faces sharp, realistic, and recognizable
+- Do NOT distort faces
 - Do NOT change skin tone unnaturally
-- Do NOT generate a fake face
-- Blend the image professionally into the design
+- Do NOT generate replacement faces
+- Do NOT add extra unknown people
+- Blend uploaded images professionally into the design
 
 Image placement should intelligently adapt according to the event.
 
 Placement rules:
-- Place the person image in a balanced position
+- Place attached person image(s) in a balanced position
 - Usually lower section or side section unless composition requires otherwise
 - Avoid covering headline text
 - Avoid awkward cropping
-- Keep proper spacing around the face
+- Keep proper spacing around faces
 - Add soft glow or premium framing if suitable
 - Use clean cutout blending if needed
 - Maintain professional poster composition
 - Better keep the person left side of the bottom business details
 
-The attached image should feel naturally integrated into the poster design and visually premium.
+The attached image(s) should feel naturally integrated into the poster design and visually premium.
 
 ━━━━━━━━━━━━━━━━━━
 🌈 BACKGROUND MOOD
@@ -538,36 +549,68 @@ Avoid overdesigning minimal occasions.
 🖼️ ATTACHED IMAGE HANDLING
 ━━━━━━━━━━━━━━━━━━
 
-If an image is attached:
+IMPORTANT:
+Use a person image ONLY if the user has actually attached image(s).
 
-- Use the uploaded image clearly and naturally in the poster
-- Preserve the person's real facial features
-- Keep the face sharp, realistic, and recognizable
-- Do NOT distort the face
-- Do NOT change skin tone unnaturally
-- Do NOT generate a fake face
-- Blend the image professionally into the design
+If NO image is attached:
+- Do NOT generate random people
+- Do NOT create AI-generated faces
+- Do NOT add unknown portraits
+- Do NOT insert celebrity-like visuals
+- Keep the poster purely design-focused using typography, occasion visuals, lighting, decorations, and premium compositions
 
-Image placement should intelligently adapt according to the event.
+If image(s) are attached:
+
+- Use ONLY the uploaded image(s)
+- Preserve real facial identity accurately
+- Keep faces sharp, natural, realistic, and recognizable
+- Maintain original skin tone naturally
+- Do NOT beautify excessively
+- Do NOT generate replacement faces
+- Do NOT morph facial structure
+- Do NOT add extra unknown people
+- Maintain realistic hair, eyes, smile, and facial details
+- Blend the uploaded image professionally into the poster
+
+The image styling should intelligently adapt according to the occasion mood.
 
 Examples:
-- Birthday → stylish portrait placement with vibrant effects
-- Anniversary → elegant romantic side-by-side composition
-- Congratulations → premium professional portrait placement
-- Memorial/Emotional → soft cinematic portrait styling
-- Festival wishes → decorative festive portrait integration
+- Birthday → vibrant stylish portrait with energetic celebratory effects
+- Anniversary → elegant romantic portrait composition with soft luxury aesthetics
+- Congratulations → confident premium portrait with achievement-style visuals
+- Best Wishes → warm clean emotional portrait styling
+- Farewell → cinematic emotional portrait mood
+- Memorial → respectful soft portrait composition
+- Festival Wishes → festive decorative portrait integration
+- Professional Occasion → modern clean professional portrait styling
+
+Portrait composition rules:
+- The uploaded person should feel like the MAIN SUBJECT of the poster
+- Keep the face clearly visible and naturally highlighted
+- Maintain balanced spacing around the person
+- Avoid aggressive crops on forehead, chin, or shoulders
+- Avoid stretching or warping the body
+- Use professional portrait framing
+- Use smooth cutout blending if needed
+- Add subtle glow, rim light, shadow, or premium framing only when suitable
+- Match lighting of the person with the poster background
+- Maintain realistic proportions and posture
 
 Placement rules:
-- Place the person image in a balanced position
-- Usually lower section or side section unless composition requires otherwise
-- Avoid covering headline text
-- Avoid awkward cropping
-- Keep proper spacing around the face
-- Add soft glow or premium framing if suitable
-- Use clean cutout blending if needed
-- Maintain professional poster composition
+- Portrait placement should dynamically adapt to the design composition
+- Usually center-focus, side-focus, or lower-center depending on the occasion
+- Never block important text
+- Ensure mobile-friendly readability
+- Keep the composition balanced and premium
+- Multiple uploaded images should be arranged elegantly without clutter
 
-The attached image should feel naturally integrated into the poster design and visually premium.
+If multiple images are attached:
+- Use the clearest face as primary focus
+- Arrange additional images in a clean premium collage or layered composition
+- Maintain equal visual importance when appropriate
+- Avoid messy overlapping
+
+The uploaded image(s) must feel naturally integrated into the poster and look like a professionally designed real social media artwork — NOT an AI-generated random portrait poster.
 
 ━━━━━━━━━━━━━━━━━━
 👤 PERSON FOCUS
