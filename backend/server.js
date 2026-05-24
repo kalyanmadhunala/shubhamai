@@ -33,7 +33,7 @@ if (process.env.NODE_ENV === "development") {
 
 // Health Route
 app.get("/api/health", (_, res) => {
-  return res.status(200);
+  return res.send("I am fine");
 });
 
 app.get("/", (_, res) => {
