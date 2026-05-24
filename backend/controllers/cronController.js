@@ -490,14 +490,14 @@ async function fetchDrikTeluguYear(year) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const runDailyCron = async (req, res) => {
-  const today = todayISO();
-  const mmdd = todayMMDD();
+  const today = todayISO(); // YYYY-MM-DD
+  const mmdd = todayMMDD(); // MM-DD
 
   console.log(`🔄 [Daily Cron] Starting refresh for ${today}`);
 
   try {
     // ─────────────────────────────────────
-    // 1. DELETE ALL OLD TODAY EVENTS
+    // 1. CLEAR OLD TODAY EVENTS
     // ─────────────────────────────────────
 
     await TodayEvent.deleteMany({});
@@ -514,7 +514,7 @@ export const runDailyCron = async (req, res) => {
       fetchGoogleCalendarToday().catch((err) => {
         console.warn(
           "⚠️ [Daily Cron] Google Calendar error:",
-          err.message,
+          err.message
         );
 
         return [];
@@ -522,7 +522,19 @@ export const runDailyCron = async (req, res) => {
     ]);
 
     // ─────────────────────────────────────
-    // 3. FETCH CUSTOM EVENTS
+    // 3. FILTER ONLY TODAY API EVENTS
+    // ─────────────────────────────────────
+
+    const filteredCalendarific = calEvents.filter(
+      (e) => e.date === today
+    );
+
+    const filteredGoogleCalendar = gcalEvents.filter(
+      (e) => e.date === today
+    );
+
+    // ─────────────────────────────────────
+    // 4. FETCH CUSTOM EVENTS
     // ─────────────────────────────────────
 
     const customEvents = await YearEvent.find({
@@ -546,7 +558,7 @@ export const runDailyCron = async (req, res) => {
     });
 
     // ─────────────────────────────────────
-    // 4. MAP CUSTOM EVENTS
+    // 5. MAP CUSTOM EVENTS
     // ─────────────────────────────────────
 
     const customMapped = customEvents.map((e) => ({
@@ -565,23 +577,23 @@ export const runDailyCron = async (req, res) => {
     }));
 
     // ─────────────────────────────────────
-    // 5. MAP API EVENTS
+    // 6. MAP API EVENTS
     // ─────────────────────────────────────
 
     const apiEvents = [
-      ...calEvents.map((e) => ({
+      ...filteredCalendarific.map((e) => ({
         ...e,
         fetchDate: today,
       })),
 
-      ...gcalEvents.map((e) => ({
+      ...filteredGoogleCalendar.map((e) => ({
         ...e,
         fetchDate: today,
       })),
     ];
 
     // ─────────────────────────────────────
-    // 6. MERGE ALL EVENTS
+    // 7. MERGE ALL EVENTS
     // ─────────────────────────────────────
 
     const mergedEvents = [
@@ -590,13 +602,13 @@ export const runDailyCron = async (req, res) => {
     ];
 
     // ─────────────────────────────────────
-    // 7. FINAL GLOBAL DEDUPLICATION
+    // 8. REMOVE DUPLICATES
     // ─────────────────────────────────────
 
     const allEvents = deduplicateEvents(mergedEvents);
 
     // ─────────────────────────────────────
-    // 8. INSERT TODAY EVENTS
+    // 9. INSERT TODAY EVENTS
     // ─────────────────────────────────────
 
     if (allEvents.length > 0) {
@@ -605,25 +617,26 @@ export const runDailyCron = async (req, res) => {
       });
 
       console.log(
-        `✅ [Daily Cron] Inserted ${allEvents.length} event(s)`,
+        `✅ [Daily Cron] Inserted ${allEvents.length} event(s)`
       );
     } else {
       console.log(
-        "⚠️ [Daily Cron] No events found to insert",
+        "⚠️ [Daily Cron] No events found to insert"
       );
     }
 
     // ─────────────────────────────────────
-    // 9. RESPONSE
+    // 10. RESPONSE
     // ─────────────────────────────────────
 
     return res.json({
       success: true,
       date: today,
       inserted: allEvents.length,
+
       breakdown: {
-        calendarific: calEvents.length,
-        googleCalendar: gcalEvents.length,
+        calendarific: filteredCalendarific.length,
+        googleCalendar: filteredGoogleCalendar.length,
         custom: customMapped.length,
         finalUnique: allEvents.length,
       },
@@ -631,7 +644,7 @@ export const runDailyCron = async (req, res) => {
   } catch (err) {
     console.error(
       "❌ [Daily Cron] Error:",
-      err.message,
+      err.message
     );
 
     return res.status(500).json({
