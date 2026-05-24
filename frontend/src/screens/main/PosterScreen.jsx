@@ -31,6 +31,7 @@ import {
   Share2,
   Phone,
   Languages,
+  Paperclip,
 } from 'lucide-react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
@@ -48,21 +49,13 @@ import { toast, Toaster } from 'sonner-native';
 
 function buildEventPrompt({ event, profile, promptOptions }) {
   const businessName = profile?.businessName || 'Shri Manjunatha Businesses';
-
   const wisherName = profile?.fullName || 'Madhunala';
-
   const businessAddress = profile?.businessAddress || 'Karimnagar';
-
   const phoneNumber = profile?.phone || '9440159683';
-
   const eventName = event?.name || 'Event';
-
   const description = event?.description || '';
-
   const promptHint = event?.promptHint || '';
-
   const category = event?.category || '';
-
   const emoji = event?.emoji || '🎉';
 
   return `Create a PREMIUM HIGH-QUALITY SOCIAL MEDIA POSTER for "${eventName}" ${emoji}.
@@ -168,46 +161,6 @@ Use visual styling only when appropriate for the event:
 The design should intelligently balance:
 luxury + minimal + modern + festive
 according to the event naturally.
-
-━━━━━━━━━━━━━━━━━━
-🖼️ ATTACHED IMAGE HANDLING
-━━━━━━━━━━━━━━━━━━
-
-IMPORTANT:
-Only use a person/photo in the poster IF the user has actually attached one or more images.
-
-If NO image is attached:
-- Do NOT generate any random person
-- Do NOT create fake human faces
-- Do NOT add AI-generated portraits
-- Do NOT include unknown people
-- Keep the poster fully design-based using only event visuals, typography, decorations, and theme elements
-
-If image(s) are attached:
-
-- Use ONLY the uploaded image(s) in the poster
-- Preserve the person's real facial features
-- Keep faces sharp, realistic, and recognizable
-- Do NOT distort faces
-- Do NOT change skin tone unnaturally
-- Do NOT generate replacement faces
-- Do NOT add extra unknown people
-- Blend uploaded images professionally into the design
-
-Image placement should intelligently adapt according to the event.
-
-Placement rules:
-- Place attached person image(s) in a balanced position
-- Usually lower section or side section unless composition requires otherwise
-- Avoid covering headline text
-- Avoid awkward cropping
-- Keep proper spacing around faces
-- Add soft glow or premium framing if suitable
-- Use clean cutout blending if needed
-- Maintain professional poster composition
-- Better keep the person left side of the bottom business details
-
-The attached image(s) should feel naturally integrated into the poster design and visually premium.
 
 ━━━━━━━━━━━━━━━━━━
 🌈 BACKGROUND MOOD
@@ -325,6 +278,123 @@ Maintain:
 - clean spacing
 - professional hierarchy
 - social-media-friendly readability
+
+━━━━━━━━━━━━━━━━━━
+🖼️ ATTACHED IMAGE HANDLING
+━━━━━━━━━━━━━━━━━━
+
+${
+  promptOptions?.attachImage
+    ? `
+IMAGE MODE: ENABLED
+
+The uploaded image represents:
+- business owner
+- sponsor
+- organization representative
+- wisher
+- branding identity
+
+IMPORTANT:
+The uploaded person should appear as a PREMIUM SUPPORTING BRANDING ELEMENT.
+
+The event/festival/occasion itself must remain the MAIN VISUAL FOCUS.
+
+STRICT RULES:
+- Use ONLY uploaded image(s) for portrait-style faces
+- Do NOT generate fake business-owner portraits
+- Do NOT replace uploaded faces
+- Preserve real identity accurately
+- Maintain realistic skin tone and facial structure
+- Keep uploaded faces natural, sharp, and recognizable
+
+PORTRAIT BEHAVIOR:
+- The uploaded portrait should usually remain small-to-medium sized
+- Position naturally near the business/footer area
+- Typically place near bottom-left business details section
+- Never overpower the event visuals
+- Never dominate the composition
+- Never block important text
+
+IMPORTANT EVENT LOGIC:
+Contextual humans related naturally to the event are allowed when visually suitable.
+
+Examples:
+- women for Women's Day
+- devotees for spiritual festivals
+- cultural dancers for traditional events
+- patriotic crowd silhouettes for national events
+- celebration atmosphere people
+- family silhouettes for family-oriented occasions
+
+However:
+- contextual humans must remain secondary visuals
+- uploaded person remains the ONLY portrait-style branding face
+- avoid additional random foreground faces
+- avoid unrelated close-up humans
+- avoid fake sponsor portraits
+
+VISUAL PRIORITY ORDER:
+1. Event/Festival identity
+2. Typography & celebration visuals
+3. Cultural/event atmosphere
+4. Uploaded owner/wisher portrait
+
+PORTRAIT STYLE:
+- Professional
+- Elegant
+- Premium
+- Clean social-media branding style
+
+The final poster should feel like a professionally designed premium event greeting poster with elegant owner branding integration.`
+    : `
+IMAGE MODE: DISABLED
+
+Do NOT generate:
+- random business-owner portraits
+- fake sponsor faces
+- unrelated foreground portraits
+- AI-generated hero subjects
+- random close-up people
+- fake uploaded-person replacements
+
+IMPORTANT:
+Humans may appear ONLY if naturally suitable and contextually related to the specific event or festival.
+
+Examples:
+- Women for Women's Day
+- Mothers for Mother's Day
+- Children for Children's Day
+- Teachers for Teachers Day
+- Devotees for spiritual festivals
+- Cultural dancers for traditional festivals
+- Patriotic crowd silhouettes for national events
+- Celebration atmosphere people when contextually appropriate
+- Traditional festival participants
+- Religious gathering atmosphere
+- Yoga participants for Yoga Day
+- Family silhouettes for family-oriented occasions
+
+STRICT RULES:
+- Event-related people must remain secondary supporting visuals
+- Avoid random portrait-focused compositions
+- Avoid unrelated foreground faces
+- Avoid AI-style business-owner portraits
+- Avoid dominant unknown human subjects
+- The event/festival itself must remain the MAIN visual focus
+
+Focus primarily on:
+- event identity
+- festival visuals
+- typography
+- decorations
+- cultural elements
+- symbolic visuals
+- cinematic lighting
+- premium social-media composition
+
+The final poster should feel naturally related to the event while avoiding random unrelated portrait generation.`
+}
 
 ━━━━━━━━━━━━━━━━━━
 🏢 BUSINESS BRANDING SECTION
@@ -546,73 +616,6 @@ The background should feel:
 Avoid overdesigning minimal occasions.
 
 ━━━━━━━━━━━━━━━━━━
-🖼️ ATTACHED IMAGE HANDLING
-━━━━━━━━━━━━━━━━━━
-
-IMPORTANT:
-Use a person image ONLY if the user has actually attached image(s).
-
-If NO image is attached:
-- Do NOT generate random people
-- Do NOT create AI-generated faces
-- Do NOT add unknown portraits
-- Do NOT insert celebrity-like visuals
-- Keep the poster purely design-focused using typography, occasion visuals, lighting, decorations, and premium compositions
-
-If image(s) are attached:
-
-- Use ONLY the uploaded image(s)
-- Preserve real facial identity accurately
-- Keep faces sharp, natural, realistic, and recognizable
-- Maintain original skin tone naturally
-- Do NOT beautify excessively
-- Do NOT generate replacement faces
-- Do NOT morph facial structure
-- Do NOT add extra unknown people
-- Maintain realistic hair, eyes, smile, and facial details
-- Blend the uploaded image professionally into the poster
-
-The image styling should intelligently adapt according to the occasion mood.
-
-Examples:
-- Birthday → vibrant stylish portrait with energetic celebratory effects
-- Anniversary → elegant romantic portrait composition with soft luxury aesthetics
-- Congratulations → confident premium portrait with achievement-style visuals
-- Best Wishes → warm clean emotional portrait styling
-- Farewell → cinematic emotional portrait mood
-- Memorial → respectful soft portrait composition
-- Festival Wishes → festive decorative portrait integration
-- Professional Occasion → modern clean professional portrait styling
-
-Portrait composition rules:
-- The uploaded person should feel like the MAIN SUBJECT of the poster
-- Keep the face clearly visible and naturally highlighted
-- Maintain balanced spacing around the person
-- Avoid aggressive crops on forehead, chin, or shoulders
-- Avoid stretching or warping the body
-- Use professional portrait framing
-- Use smooth cutout blending if needed
-- Add subtle glow, rim light, shadow, or premium framing only when suitable
-- Match lighting of the person with the poster background
-- Maintain realistic proportions and posture
-
-Placement rules:
-- Portrait placement should dynamically adapt to the design composition
-- Usually center-focus, side-focus, or lower-center depending on the occasion
-- Never block important text
-- Ensure mobile-friendly readability
-- Keep the composition balanced and premium
-- Multiple uploaded images should be arranged elegantly without clutter
-
-If multiple images are attached:
-- Use the clearest face as primary focus
-- Arrange additional images in a clean premium collage or layered composition
-- Maintain equal visual importance when appropriate
-- Avoid messy overlapping
-
-The uploaded image(s) must feel naturally integrated into the poster and look like a professionally designed real social media artwork — NOT an AI-generated random portrait poster.
-
-━━━━━━━━━━━━━━━━━━
 👤 PERSON FOCUS
 ━━━━━━━━━━━━━━━━━━
 
@@ -707,6 +710,143 @@ Use according to the occasion:
 - modern clean composition
 - cinematic depth
 - premium layering
+
+━━━━━━━━━━━━━━━━━━
+🖼️ ATTACHED IMAGE HANDLING
+━━━━━━━━━━━━━━━━━━
+
+${
+  promptOptions?.attachImage
+    ? `
+IMAGE MODE: ENABLED
+
+The uploaded image(s) represent the MAIN OCCASION PERSON(S).
+
+IMPORTANT:
+The uploaded person(s) MUST become the MAIN SUBJECT of the poster.
+
+The entire poster composition should revolve around:
+- the uploaded person
+- the custom occasion
+- the emotional celebration mood
+
+STRICT RULES:
+- Use ONLY uploaded image(s) for portrait-style faces
+- Do NOT generate random people
+- Do NOT replace uploaded faces
+- Do NOT add unknown humans
+- Preserve real identity accurately
+- Maintain realistic skin tone and facial structure
+- Keep faces natural, sharp, and recognizable
+- Avoid AI-looking faces
+- Avoid distorted facial features
+
+CUSTOM OCCASION BEHAVIOR:
+
+Birthday:
+- vibrant stylish hero portrait
+- celebratory atmosphere
+- modern luxury birthday aesthetics
+- premium cinematic lighting
+
+Anniversary:
+- elegant romantic composition
+- emotional couple framing
+- warm premium tones
+- classy decorative styling
+
+Congratulations:
+- achievement-focused premium portrait
+- success-oriented visuals
+- modern professional celebration mood
+
+Farewell:
+- emotional cinematic portrait mood
+- warm memorable atmosphere
+- elegant soft-light composition
+
+Best Wishes:
+- friendly emotional portrait composition
+- warm modern celebration aesthetics
+
+Festival Wishes:
+- festive portrait integration
+- cultural decorative atmosphere
+- premium celebratory composition
+
+Baby/Family Events:
+- soft emotional family-focused composition
+- warm premium styling
+- elegant emotional balance
+
+PORTRAIT COMPOSITION RULES:
+- The uploaded person should feel like the HERO of the poster
+- Keep face clearly visible
+- Use premium portrait framing
+- Maintain realistic proportions
+- Avoid aggressive crop
+- Avoid awkward cutoffs
+- Match portrait lighting with poster background
+- Use premium cinematic blending
+- Add glow/rim-light only if visually suitable
+- Maintain balanced spacing around the face
+
+PLACEMENT RULES:
+- Center hero composition
+- Side hero composition
+- Cinematic premium framing
+- Emotional visual balance
+- Mobile-friendly composition
+
+MULTIPLE IMAGE RULES:
+If multiple images are attached:
+- Arrange elegantly
+- Use premium collage/layered composition
+- Keep all faces recognizable
+- Maintain clean composition
+- Avoid clutter
+
+The final poster should feel like a professionally designed premium custom celebration poster centered around the uploaded person(s).
+`
+    : `
+IMAGE MODE: DISABLED
+
+Do NOT generate:
+- random portrait-style people
+- unrelated foreground faces
+- fake AI portraits
+- unknown hero subjects
+- random close-up humans
+
+IMPORTANT:
+Contextual humans may appear ONLY if naturally suitable for the custom occasion.
+
+Examples:
+- birthday celebration atmosphere people
+- anniversary silhouettes
+- celebration crowd mood
+- family silhouettes
+- emotional gathering atmosphere
+- cultural celebration participants
+
+However:
+- contextual humans must remain secondary visuals
+- avoid dominant unknown portrait subjects
+- avoid random foreground faces
+- avoid fake AI-generated people
+
+Focus primarily on:
+- occasion identity
+- emotional celebration aesthetics
+- typography
+- decorative visuals
+- premium compositions
+- cinematic lighting
+- luxury celebration mood
+
+The final poster should feel emotionally connected to the custom occasion without random portrait generation.
+`
+}
 
 ━━━━━━━━━━━━━━━━━━
 🏢 BUSINESS BRANDING SECTION
@@ -1001,6 +1141,7 @@ export default function PosterScreen({ navigation, route }) {
     businessAddress: false,
     phoneNumber: false,
     isTelugu: true,
+    attachImage: false,
   });
 
   useEffect(() => {
@@ -1497,6 +1638,14 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Telugu Language',
               subtitle: 'Toggle for poster in Telugu',
               Icon: Languages,
+              isDisplay: true,
+            },
+
+            {
+              key: 'attachImage',
+              title: 'Attach Image',
+              subtitle: 'Toggle to attach image',
+              Icon: Paperclip,
               isDisplay: true,
             },
           ]
