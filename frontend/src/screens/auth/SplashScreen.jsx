@@ -9,25 +9,32 @@ import {
   useWindowDimensions,
   ActivityIndicator,
 } from 'react-native';
+
 import LinearGradient from 'react-native-linear-gradient';
 import NetInfo from '@react-native-community/netinfo';
 import { toast, Toaster } from 'sonner-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { GRADIENTS } from '../../constants/colors';
 import { scale, moderateScale } from '../../utils/responsive';
 import { CONFIG } from '../../constants/config';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SplashScreen({ navigation }) {
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
+
   const insets = useSafeAreaInsets();
-  const [loadingText, setLoadingText] = useState('Starting Server...');
+
+  const [loadingText, setLoadingText] = useState('Waking up server...');
 
   useEffect(() => {
     let isMounted = true;
 
     const wakeUpServer = async () => {
       try {
-        // Check internet first
+        // ─────────────────────────────────────
+        // 1. Check internet connection
+        // ─────────────────────────────────────
+
         const state = await NetInfo.fetch();
 
         if (!state.isConnected) {
@@ -42,21 +49,59 @@ export default function SplashScreen({ navigation }) {
           return;
         }
 
-        // Minimum splash delay
+        // ─────────────────────────────────────
+        // 2. Minimum splash delay
+        // ─────────────────────────────────────
+
         const minDelay = new Promise(resolve => setTimeout(resolve, 1800));
 
-        // Wake backend server
-        const serverRequest = fetch(`${CONFIG.API_BASE_URL}/health`);
+        // ─────────────────────────────────────
+        // 3. Fetch timeout for Render cold start
+        // ─────────────────────────────────────
+
+        const controller = new AbortController();
+
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 45000);
+
+        // ─────────────────────────────────────
+        // 4. Wake backend server
+        // ─────────────────────────────────────
+
+        const serverRequest = fetch(`${CONFIG.API_BASE_URL}/health`, {
+          method: 'GET',
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
+
+        // ─────────────────────────────────────
+        // 5. Wait for BOTH:
+        //    - Minimum splash time
+        //    - Server wakeup
+        // ─────────────────────────────────────
 
         const [response] = await Promise.all([serverRequest, minDelay]);
 
-        const data = await response.json();
+        // ─────────────────────────────────────
+        // 6. Validate response
+        // ─────────────────────────────────────
 
-        if (!response.ok || !data.success) {
-          toast.error(data?.message || 'Unable to connect server');
-          setLoadingText('Server Error');
+        if (!response.ok) {
+          toast.error("Couldn't reach server. Contact Kalyan Madhunala");
+
+          setLoadingText('Opening app in offline mode...');
+
+          // Allow app access anyway
+          setTimeout(() => {
+            navigation.replace('Main');
+          }, 1200);
+
           return;
         }
+
+        // ─────────────────────────────────────
+        // 7. Launch app
+        // ─────────────────────────────────────
 
         if (isMounted) {
           setLoadingText('Launching App...');
@@ -67,10 +112,12 @@ export default function SplashScreen({ navigation }) {
         }
       } catch (error) {
         if (isMounted) {
-          toast.error('Check your internet connection');
+          // Abort timeout / network / offline
+          toast.error('Server is taking longer to respond');
 
-          setLoadingText('Offline Mode...');
+          setLoadingText('Opening App...');
 
+          // Allow app access anyway
           setTimeout(() => {
             navigation.replace('Main');
           }, 1200);
@@ -103,6 +150,7 @@ export default function SplashScreen({ navigation }) {
           justifyContent: 'center',
         }}
       >
+        {/* Toast */}
         <Toaster
           position="bottom-center"
           richColors
@@ -122,31 +170,37 @@ export default function SplashScreen({ navigation }) {
               shadowRadius: 16,
               elevation: 9999,
             },
+
             titleStyle: {
               fontFamily: 'Inter-Bold',
               fontSize: 14,
               color: '#111827',
             },
+
             descriptionStyle: {
               fontFamily: 'Inter-Regular',
               fontSize: 12,
               color: '#6B7280',
               lineHeight: 17,
             },
+
             successStyle: {
               borderLeftWidth: 4,
               borderLeftColor: '#10B981',
             },
+
             errorStyle: {
               borderLeftWidth: 4,
               borderLeftColor: '#EF4444',
             },
+
             infoStyle: {
               borderLeftWidth: 4,
               borderLeftColor: '#3B82F6',
             },
           }}
         />
+
         {/* Logo */}
         <View
           style={{
@@ -167,6 +221,7 @@ export default function SplashScreen({ navigation }) {
             }}
           />
         </View>
+
         {/* App Name */}
         <Text
           style={{
@@ -178,6 +233,7 @@ export default function SplashScreen({ navigation }) {
         >
           ShubhaM.AI
         </Text>
+
         {/* Tagline */}
         <Text
           style={{
@@ -190,6 +246,7 @@ export default function SplashScreen({ navigation }) {
         >
           Your Daily Festival Poster Companion
         </Text>
+
         {/* Loader */}
         <View
           style={{
@@ -212,6 +269,7 @@ export default function SplashScreen({ navigation }) {
             {loadingText}
           </Text>
         </View>
+
         {/* Bottom Note */}
         <Text
           style={{
