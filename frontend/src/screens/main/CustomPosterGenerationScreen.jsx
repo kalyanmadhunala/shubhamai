@@ -164,15 +164,10 @@ export default function CustomPosterGenerationScreen({ navigation }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [personName, setPersonName] = useState('');
-
   const [selectedChip, setSelectedChip] = useState('Happy Birthday');
-
   const [description, setDescription] = useState('🎂 Happy Birthday');
-
   const [businessName, setBusinessName] = useState('');
-
   const [wisherName, setWisherName] = useState('');
-
   const [errors, setErrors] = useState({});
 
   // ─────────────────────────────────────────
@@ -656,119 +651,6 @@ export default function CustomPosterGenerationScreen({ navigation }) {
                 {errors.description}
               </Text>
             ) : null}
-          </View>
-          {/* Business Details */}
-          <View
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: moderateScale(16),
-              padding: scale(16),
-              marginBottom: scale(12),
-              shadowColor: '#000',
-              shadowOffset: {
-                width: 0,
-                height: 1,
-              },
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: moderateScale(13),
-                fontFamily: 'Inter-Bold',
-                color: '#1A1A2E',
-                marginBottom: scale(12),
-              }}
-            >
-              Your Details
-            </Text>
-
-            {/* Business Name */}
-
-            <Text
-              style={{
-                fontSize: moderateScale(11),
-                fontFamily: 'Inter-SemiBold',
-                color: '#555',
-                marginBottom: scale(6),
-              }}
-            >
-              Business Name
-            </Text>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: '#E8E8E8',
-                borderRadius: moderateScale(10),
-                paddingHorizontal: scale(12),
-                paddingVertical: scale(11),
-                backgroundColor: '#FAFAFA',
-                gap: scale(8),
-                marginBottom: scale(12),
-              }}
-            >
-              <Building2 size={18} color="#0D47A1" />
-              <TextInput
-                value={businessName}
-                onChangeText={setBusinessName}
-                placeholder="Business Name"
-                placeholderTextColor="#BBBBBB"
-                style={{
-                  flex: 1,
-                  fontSize: moderateScale(13),
-                  fontFamily: 'Inter-Regular',
-                  color: '#1A1A2E',
-                  padding: 0,
-                }}
-              />
-            </View>
-
-            {/* Wisher Name */}
-
-            <Text
-              style={{
-                fontSize: moderateScale(11),
-                fontFamily: 'Inter-SemiBold',
-                color: '#555',
-                marginBottom: scale(6),
-              }}
-            >
-              Wisher Name
-            </Text>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: '#E8E8E8',
-                borderRadius: moderateScale(10),
-                paddingHorizontal: scale(12),
-                paddingVertical: scale(11),
-                backgroundColor: '#FAFAFA',
-                gap: scale(8),
-              }}
-            >
-              <CircleUserRound size={18} color="#0D47A1" />
-              <TextInput
-                value={wisherName}
-                onChangeText={setWisherName}
-                placeholder="Wisher Name"
-                placeholderTextColor="#BBBBBB"
-                style={{
-                  flex: 1,
-                  fontSize: moderateScale(13),
-                  fontFamily: 'Inter-Regular',
-                  color: '#1A1A2E',
-                  padding: 0,
-                }}
-              />
-            </View>
           </View>
           <View
             style={{

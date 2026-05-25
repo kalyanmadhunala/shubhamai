@@ -847,14 +847,13 @@ Focus primarily on:
 The final poster should feel emotionally connected to the custom occasion without random portrait generation.
 `
 }
-
-━━━━━━━━━━━━━━━━━━
-🏢 BUSINESS BRANDING SECTION
-━━━━━━━━━━━━━━━━━━
-
 ${
   promptOptions?.businessName
     ? `
+    ━━━━━━━━━━━━━━━━━━
+    🏢 BUSINESS BRANDING SECTION
+    ━━━━━━━━━━━━━━━━━━
+
 Include a PREMIUM BUSINESS PANEL at the bottom.
 
 Business Name:
@@ -1136,10 +1135,10 @@ export default function PosterScreen({ navigation, route }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [promptOptions, setPromptOptions] = useState({
-    businessName: false,
+    businessName: isCustom ? false : false,
     wisherName: true,
-    businessAddress: false,
-    phoneNumber: false,
+    businessAddress: isCustom ? false : false,
+    phoneNumber: isCustom ? false : false,
     isTelugu: true,
     attachImage: false,
   });
@@ -1148,10 +1147,15 @@ export default function PosterScreen({ navigation, route }) {
     if (profile) {
       setPromptOptions(prev => ({
         ...prev,
-        businessName: !!profile?.businessName,
+
+        businessName: isCustom ? false : !!profile?.businessName,
+
+        businessAddress: isCustom ? false : false,
+
+        phoneNumber: isCustom ? false : false,
       }));
     }
-  }, [profile]);
+  }, [profile, isCustom]);
 
   const togglePromptOption = key => {
     setPromptOptions(prev => ({
@@ -1606,9 +1610,8 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Business Name',
               subtitle: 'Include business/store name',
               Icon: Building2,
-              isDisplay: !!profile?.businessName,
+              isDisplay: !isCustom && !!profile?.businessName,
             },
-
             {
               key: 'wisherName',
               title: 'Wisher Name',
@@ -1622,7 +1625,7 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Business Address',
               subtitle: 'Include address in footer',
               Icon: MapPin,
-              isDisplay: !!profile?.businessAddress,
+              isDisplay: !isCustom && !!profile?.businessAddress,
             },
 
             {
@@ -1630,12 +1633,12 @@ export default function PosterScreen({ navigation, route }) {
               title: 'Phone Number',
               subtitle: 'Include contact number',
               Icon: Phone,
-              isDisplay: !!profile?.phone,
+              isDisplay: !isCustom && !!profile?.phone,
             },
 
             {
               key: 'isTelugu',
-              title: 'Telugu Language',
+              title: 'Telugu Poster',
               subtitle: 'Toggle for poster in Telugu',
               Icon: Languages,
               isDisplay: true,

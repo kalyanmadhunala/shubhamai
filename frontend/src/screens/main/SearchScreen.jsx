@@ -106,7 +106,7 @@ function SearchEventCard({ event, onPress, index }) {
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(index * 60).duration(450)}
+      entering={FadeInDown.delay(index * 10).duration(450)}
       style={{ marginBottom: scale(10) }}
     >
       <Animated.View style={animStyle}>
@@ -311,6 +311,9 @@ export default function SearchScreen({ navigation }) {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+  const [paginatedEvents, setPaginatedEvents] = useState([]);
 
   const now = new Date();
   const [currentYear] = useState(now.getFullYear());
@@ -378,10 +381,10 @@ export default function SearchScreen({ navigation }) {
       });
 
       setAllEvents(filtered);
-
       setGroupedEvents(grouped);
-
       setDisplayEvents(filtered);
+      setPage(1);
+      paginateEvents(filtered, 1);
     } catch (err) {
       console.log(err);
 
@@ -404,29 +407,55 @@ export default function SearchScreen({ navigation }) {
   }, []);
 
   // ── PRESERVED: applyFilter ────────────────────────────────────────────────
-  const applyFilter = useCallback((list, category) => {
-    if (category === 'all') {
-      const grouped = {
-        telangana: [],
-        national: [],
-        international: [],
-      };
+  const applyFilter = useCallback(
+    (list, category) => {
+      let filteredList = [];
 
-      list.forEach(event => {
-        if (grouped[event.region]) {
-          grouped[event.region].push(event);
-        }
-      });
+      if (category === 'all') {
+        const grouped = {
+          telangana: [],
+          national: [],
+          international: [],
+        };
 
-      setGroupedEvents(grouped);
+        list.forEach(event => {
+          if (grouped[event.region]) {
+            grouped[event.region].push(event);
+          }
+        });
 
-      setDisplayEvents(list);
-    } else {
-      setGroupedEvents(null);
+        setGroupedEvents(grouped);
 
-      setDisplayEvents(list.filter(ev => ev.region === category));
-    }
-  }, []);
+        filteredList = [
+          ...grouped.telangana.map(item => ({
+            ...item,
+            __section: 'Telangana',
+          })),
+
+          ...grouped.national.map(item => ({
+            ...item,
+            __section: 'India',
+          })),
+
+          ...grouped.international.map(item => ({
+            ...item,
+            __section: 'International',
+          })),
+        ];
+      } else {
+        setGroupedEvents(null);
+
+        filteredList = list.filter(ev => ev.region === category);
+      }
+
+      setDisplayEvents(filteredList);
+
+      setPage(1);
+
+      paginateEvents(filteredList, 1);
+    },
+    [paginateEvents],
+  );
 
   // ── PRESERVED: doSearch with debounce ────────────────────────────────────
   const doSearch = useCallback(
@@ -505,6 +534,15 @@ export default function SearchScreen({ navigation }) {
     });
   };
 
+  const handleLoadMore = () => {
+    if (paginatedEvents.length >= displayEvents.length) {
+      return;
+    }
+    const nextPage = page + 1;
+    setPage(nextPage);
+    paginateEvents(displayEvents, nextPage);
+  };
+
   const topPad = Math.max(insets.top, 28);
 
   const scrollY = useSharedValue(0);
@@ -514,6 +552,11 @@ export default function SearchScreen({ navigation }) {
       scrollY.value = event.contentOffset.y;
     },
   });
+
+  const paginateEvents = useCallback((events, pageNumber = 1) => {
+    const sliced = events.slice(0, pageNumber * PAGE_SIZE);
+    setPaginatedEvents(sliced);
+  }, []);
 
   const animatedHeaderStyle = useAnimatedStyle(() => {
     const paddingBottom = interpolate(
@@ -612,7 +655,7 @@ export default function SearchScreen({ navigation }) {
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{
-        paddingBottom: verticalScale(12),
+        paddingBottom: verticalScale(10),
         gap: scale(8),
       }}
     >
@@ -620,81 +663,55 @@ export default function SearchScreen({ navigation }) {
         const isActive = activeCategory === cat.id;
         const emoji = CATEGORY_EMOJIS[cat.id];
 
-        return isActive ? (
+        return (
           <TouchableOpacity
             key={cat.id}
             onPress={() => handleCategoryPress(cat.id)}
             activeOpacity={0.9}
-            style={{ borderRadius: 999 }}
+            style={{
+              borderRadius: 999,
+            }}
           >
             <LinearGradient
-              colors={GRADIENTS.primary}
+              colors={isActive ? GRADIENTS.primary : ['#FFFFFF', '#FFFFFF']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                paddingHorizontal: scale(14),
-                paddingVertical: scale(8),
+                justifyContent: 'center',
+                marginTop: scale(1),
+                paddingHorizontal: scale(16),
+                paddingVertical: scale(9),
+                minHeight: verticalScale(38),
                 borderRadius: 999,
+                borderColor: isActive ? 'transparent' : 'rgba(0,0,0,0.04)',
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.15,
+                shadowOpacity: isActive ? 0.15 : 0.06,
                 shadowRadius: 4,
-                elevation: 4,
+                elevation: isActive ? 4 : 2,
               }}
             >
               <Text
-                style={{ fontSize: moderateScale(12), marginRight: scale(4) }}
+                style={{
+                  fontSize: moderateScale(12),
+                  marginRight: scale(4),
+                }}
               >
                 {emoji}
               </Text>
+
               <Text
                 style={{
-                  color: '#FFFFFF',
+                  color: isActive ? '#FFFFFF' : '#6B7280',
                   fontSize: moderateScale(12),
-                  fontFamily: 'Inter-SemiBold',
+                  fontFamily: isActive ? 'Inter-SemiBold' : 'Inter-Medium',
                 }}
               >
                 {cat.label}
               </Text>
             </LinearGradient>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            key={cat.id}
-            onPress={() => handleCategoryPress(cat.id)}
-            activeOpacity={0.85}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: scale(14),
-              paddingVertical: scale(8),
-              borderRadius: 999,
-              borderWidth: 1.5,
-              backgroundColor: '#FFFFFF',
-              borderColor: 'rgba(0,0,0,0.08)',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-          >
-            <Text
-              style={{ fontSize: moderateScale(12), marginRight: scale(4) }}
-            >
-              {emoji}
-            </Text>
-            <Text
-              style={{
-                color: '#6B7280',
-                fontSize: moderateScale(12),
-                fontFamily: 'Inter-Medium',
-              }}
-            >
-              {cat.label}
-            </Text>
           </TouchableOpacity>
         );
       })}
@@ -1008,26 +1025,7 @@ export default function SearchScreen({ navigation }) {
           </View>
         ) : (
           <Animated.FlatList
-            data={
-              activeCategory === 'all'
-                ? [
-                    ...(groupedEvents?.telangana || []).map(item => ({
-                      ...item,
-                      __section: 'Telangana',
-                    })),
-
-                    ...(groupedEvents?.national || []).map(item => ({
-                      ...item,
-                      __section: 'India',
-                    })),
-
-                    ...(groupedEvents?.international || []).map(item => ({
-                      ...item,
-                      __section: 'International',
-                    })),
-                  ]
-                : displayEvents
-            }
+            data={paginatedEvents}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -1038,27 +1036,12 @@ export default function SearchScreen({ navigation }) {
             }
             onScroll={scrollHandler}
             scrollEventThrottle={16}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.4}
             keyExtractor={item => String(item._id || item.id || Math.random())}
             renderItem={({ item, index }) => {
               const previousItem =
-                index > 0
-                  ? (activeCategory === 'all'
-                      ? [
-                          ...(groupedEvents?.telangana || []).map(i => ({
-                            ...i,
-                            __section: 'Telangana',
-                          })),
-                          ...(groupedEvents?.national || []).map(i => ({
-                            ...i,
-                            __section: 'India',
-                          })),
-                          ...(groupedEvents?.international || []).map(i => ({
-                            ...i,
-                            __section: 'International',
-                          })),
-                        ]
-                      : displayEvents)[index - 1]
-                  : null;
+                index > 0 ? paginatedEvents[index - 1] : null;
 
               const showHeader =
                 activeCategory === 'all' &&
@@ -1066,20 +1049,6 @@ export default function SearchScreen({ navigation }) {
 
               return (
                 <>
-                  {showHeader && (
-                    <Text
-                      style={{
-                        fontSize: moderateScale(18),
-                        fontFamily: 'Inter-Bold',
-                        color: '#111827',
-                        marginTop: verticalScale(14),
-                        marginBottom: verticalScale(10),
-                      }}
-                    >
-                      {item.__section}
-                    </Text>
-                  )}
-
                   <SearchEventCard
                     event={item}
                     onPress={handleEventPress}
@@ -1092,7 +1061,7 @@ export default function SearchScreen({ navigation }) {
             ListHeaderComponent={
               <>
                 {CategoryStrip}
-                <View style={{ paddingBottom: verticalScale(10) }}>
+                <View style={{ paddingBottom: verticalScale(12) }}>
                   <Text
                     style={{
                       fontSize: moderateScale(12),
@@ -1155,6 +1124,18 @@ export default function SearchScreen({ navigation }) {
                   Try a different search term or filter category
                 </Text>
               </View>
+            }
+            ListFooterComponent={
+              paginatedEvents.length < displayEvents.length ? (
+                <View
+                  style={{
+                    paddingVertical: 10,
+                    alignItems: 'center',
+                  }}
+                >
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                </View>
+              ) : null
             }
           />
         )}

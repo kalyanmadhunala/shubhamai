@@ -13,6 +13,7 @@ import {
   Image,
   Modal,
   RefreshControl,
+  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 
@@ -35,21 +36,14 @@ import {
 } from 'lucide-react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { COLORS, GRADIENTS } from '../../constants/colors';
-
 import Loader from '../../components/common/Loader';
-
 import { scale, verticalScale, moderateScale } from '../../utils/responsive';
-
 import { toast, Toaster } from 'sonner-native';
-
 import eventsService from '../../services/api/eventsService';
 
 const TYPE_OPTIONS = ['annual', 'one-time'];
-
 const CATEGORY_OPTIONS = ['Festival', 'Personal', 'Business', 'Family'];
 
 const EMPTY_FORM = {
@@ -98,6 +92,9 @@ export default function ImportantDatesScreen() {
   const [deleteModal, setDeleteModal] = useState(false);
   const [selectedDeleteId, setSelectedDeleteId] = useState(null);
   const [copied, setCopied] = useState(false);
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+  const [paginatedDates, setPaginatedDates] = useState([]);
 
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -135,7 +132,10 @@ List each event as a separate object, even if multiple events occur on the same 
     try {
       const response = await eventsService.getCustomEvents();
 
-      setDates(response?.events || []);
+      const events = response?.events || [];
+      setDates(events);
+      setPage(1);
+      paginateDates(events, 1);
     } catch (err) {
       toast.error(err?.message || 'Failed to load events.');
     } finally {
@@ -302,6 +302,15 @@ List each event as a separate object, even if multiple events occur on the same 
     setDeleteModal(true);
   };
 
+  const handleLoadMore = () => {
+    if (paginatedDates.length >= dates.length) {
+      return;
+    }
+    const nextPage = page + 1;
+    setPage(nextPage);
+    paginateDates(dates, nextPage);
+  };
+
   // ─────────────────────────────────────
   // HELPERS
   // ─────────────────────────────────────
@@ -344,6 +353,12 @@ List each event as a separate object, even if multiple events occur on the same 
     if (item.region === 'national') return 'India';
 
     return item.region || 'Custom';
+  };
+
+  const paginateDates = (events, pageNumber = 1) => {
+    const sliced = events.slice(0, pageNumber * PAGE_SIZE);
+
+    setPaginatedDates(sliced);
   };
 
   if (loading) {
@@ -601,21 +616,13 @@ List each event as a separate object, even if multiple events occur on the same 
       <View
         style={{
           paddingTop: insets.top + 12,
-
           paddingBottom: verticalScale(16),
-
           paddingHorizontal: scale(20),
-
           backgroundColor: '#FFFFFF',
-
           flexDirection: 'row',
-
           alignItems: 'center',
-
           justifyContent: 'space-between',
-
           borderBottomWidth: 1,
-
           borderBottomColor: '#F0F0F0',
         }}
       >
@@ -684,7 +691,9 @@ List each event as a separate object, even if multiple events occur on the same 
 
       {/* ── List ── */}
       <FlatList
-        data={dates}
+        data={paginatedDates}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
         keyExtractor={item => item._id?.toString() || item.id?.toString()}
         contentContainerStyle={{
           padding: scale(16),
@@ -738,6 +747,18 @@ List each event as a separate object, even if multiple events occur on the same 
           </View>
         }
         renderItem={renderItem}
+        ListFooterComponent={
+          paginatedDates.length < dates.length ? (
+            <View
+              style={{
+                paddingVertical: 12,
+                alignItems: 'center',
+              }}
+            >
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            </View>
+          ) : null
+        }
       />
 
       {/* ── Add Modal ── */}

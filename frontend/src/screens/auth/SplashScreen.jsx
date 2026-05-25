@@ -39,9 +39,7 @@ export default function SplashScreen({ navigation }) {
 
         if (!state.isConnected) {
           toast.error('Check your internet connection');
-
           setLoadingText('No Internet Connection');
-
           setTimeout(() => {
             navigation.replace('Main');
           }, 1500);
@@ -231,7 +229,7 @@ export default function SplashScreen({ navigation }) {
             letterSpacing: 1,
           }}
         >
-          ShubhaM.AI
+          ShubhaM.Ai
         </Text>
 
         {/* Tagline */}
@@ -244,7 +242,7 @@ export default function SplashScreen({ navigation }) {
             letterSpacing: 0.5,
           }}
         >
-          Your Daily Festival Poster Companion
+          Your Daily Event Poster Companion
         </Text>
 
         {/* Loader */}
@@ -256,18 +254,6 @@ export default function SplashScreen({ navigation }) {
           }}
         >
           <ActivityIndicator size="large" color="#FFFFFF" />
-
-          <Text
-            style={{
-              marginTop: scale(14),
-              fontSize: moderateScale(13),
-              color: 'rgba(255,255,255,0.85)',
-              fontFamily: 'Inter-Medium',
-              letterSpacing: 0.4,
-            }}
-          >
-            {loadingText}
-          </Text>
         </View>
 
         {/* Bottom Note */}
@@ -280,7 +266,7 @@ export default function SplashScreen({ navigation }) {
             fontFamily: 'Inter-Regular',
           }}
         >
-          Powered by ChatGPT & Gemini ✨
+          Developed by Kalyan Madhunala ✨
         </Text>
       </LinearGradient>
     </View>
