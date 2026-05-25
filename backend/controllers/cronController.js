@@ -375,8 +375,8 @@ async function fetchMonthFestivals(month) {
         : `https://www.drikpanchang.com${href}`,
       isAnnual: false,
       region: "telangana",
-      category: "hindu_festival",
-      emoji: "🛕",
+      category: "",
+      emoji: "🏛️",
       country: "India",
       tags: [name.toLowerCase()],
       source: "drik_panchang",
@@ -512,10 +512,7 @@ export const runDailyCron = async (req, res) => {
       fetchCalendarificToday(),
 
       fetchGoogleCalendarToday().catch((err) => {
-        console.warn(
-          "⚠️ [Daily Cron] Google Calendar error:",
-          err.message
-        );
+        console.warn("⚠️ [Daily Cron] Google Calendar error:", err.message);
 
         return [];
       }),
@@ -525,13 +522,9 @@ export const runDailyCron = async (req, res) => {
     // 3. FILTER ONLY TODAY API EVENTS
     // ─────────────────────────────────────
 
-    const filteredCalendarific = calEvents.filter(
-      (e) => e.date === today
-    );
+    const filteredCalendarific = calEvents.filter((e) => e.date === today);
 
-    const filteredGoogleCalendar = gcalEvents.filter(
-      (e) => e.date === today
-    );
+    const filteredGoogleCalendar = gcalEvents.filter((e) => e.date === today);
 
     // ─────────────────────────────────────
     // 4. FETCH CUSTOM EVENTS
@@ -544,7 +537,7 @@ export const runDailyCron = async (req, res) => {
         {
           $or: [
             { date: today }, // YYYY-MM-DD
-            { date: mmdd },  // MM-DD recurring
+            { date: mmdd }, // MM-DD recurring
           ],
         },
       ],
@@ -561,6 +554,7 @@ export const runDailyCron = async (req, res) => {
       region: e.region || "custom",
       category: e.category || "custom",
       emoji: e.emoji || "🎉",
+      country: e.country,
       tags: e.tags || [],
       promptHint: e.promptHint || "",
       source: e.source || "custom",
@@ -589,10 +583,7 @@ export const runDailyCron = async (req, res) => {
     // 7. MERGE ALL EVENTS
     // ─────────────────────────────────────
 
-    const mergedEvents = [
-      ...apiEvents,
-      ...customMapped,
-    ];
+    const mergedEvents = [...apiEvents, ...customMapped];
 
     // ─────────────────────────────────────
     // 8. REMOVE DUPLICATES
@@ -609,13 +600,9 @@ export const runDailyCron = async (req, res) => {
         ordered: false,
       });
 
-      console.log(
-        `✅ [Daily Cron] Inserted ${allEvents.length} event(s)`
-      );
+      console.log(`✅ [Daily Cron] Inserted ${allEvents.length} event(s)`);
     } else {
-      console.log(
-        "⚠️ [Daily Cron] No events found to insert"
-      );
+      console.log("⚠️ [Daily Cron] No events found to insert");
     }
 
     // ─────────────────────────────────────
@@ -635,10 +622,7 @@ export const runDailyCron = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(
-      "❌ [Daily Cron] Error:",
-      err.message
-    );
+    console.error("❌ [Daily Cron] Error:", err.message);
 
     return res.status(500).json({
       success: false,
@@ -653,12 +637,14 @@ export const runDailyCron = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const runYearlyCron = async (req, res) => {
-  const currentYear = new Date().getFullYear();
+  const year = new Date().toLocaleString("en-US", {
+    timeZone: "Asia/Kolkata",
+  });
+
+  const currentYear = new Date(year).getFullYear();
   const prevYear = currentYear - 1;
 
-  console.log(
-    `🔄 [Yearly Cron] Starting yearly refresh for ${currentYear}`,
-  );
+  console.log(`🔄 [Yearly Cron] Starting yearly refresh for ${currentYear}`);
 
   try {
     // ─────────────────────────────────────
@@ -681,10 +667,11 @@ export const runYearlyCron = async (req, res) => {
           source: "drik_panchang",
           eventYear: prevYear,
         },
-
-        // Remove old one-time custom events
+        // Remove old one-time custom, festival, personal, business, family events
         {
-          category: "custom",
+          category: {
+            $in: ["custom", "festival", "personal", "business", "family"],
+          },
           isAnnual: false,
           eventYear: prevYear,
         },
@@ -703,18 +690,12 @@ export const runYearlyCron = async (req, res) => {
       eventYear: currentYear,
 
       source: {
-        $in: [
-          "calendarific",
-          "google_calendar",
-          "drik_panchang",
-        ],
+        $in: ["calendarific", "google_calendar", "drik_panchang"],
       },
     });
 
     if (alreadyFetched) {
-      console.log(
-        `✅ [Yearly Cron] Already fetched for ${currentYear}`,
-      );
+      console.log(`✅ [Yearly Cron] Already fetched for ${currentYear}`);
 
       return res.json({
         success: true,
@@ -727,37 +708,17 @@ export const runYearlyCron = async (req, res) => {
     // 3. Fetch ALL sources in parallel
     // ─────────────────────────────────────
 
-    const [
-      calEvents,
-      gcalEvents,
-      teluguEvents,
-      monthlyEvents,
-    ] = await Promise.all([
+    const [calEvents, gcalEvents, monthlyEvents] = await Promise.all([
       fetchCalendarificYear(currentYear),
 
       fetchGoogleCalendarYear(currentYear).catch((err) => {
-        console.warn(
-          "⚠️ [Yearly Cron] Google Calendar error:",
-          err.message,
-        );
-
-        return [];
-      }),
-
-      fetchDrikTeluguYear(currentYear).catch((err) => {
-        console.warn(
-          "⚠️ [Yearly Cron] Drik Panchang error:",
-          err.message,
-        );
+        console.warn("⚠️ [Yearly Cron] Google Calendar error:", err.message);
 
         return [];
       }),
 
       fetchAllMonthsFestivals().catch((err) => {
-        console.warn(
-          "⚠️ [Yearly Cron] Monthly Festivals error:",
-          err.message,
-        );
+        console.warn("⚠️ [Yearly Cron] Monthly Festivals error:", err.message);
 
         return [];
       }),
@@ -767,22 +728,16 @@ export const runYearlyCron = async (req, res) => {
     // 4. Merge all events
     // ─────────────────────────────────────
 
-    const mergedEvents = [
-      ...calEvents,
-      ...gcalEvents,
-      ...teluguEvents,
-      ...monthlyEvents,
-    ];
+    const mergedEvents = [...calEvents, ...gcalEvents, ...monthlyEvents];
 
     // ─────────────────────────────────────
     // 5. Global Deduplication
     // ─────────────────────────────────────
 
-    const allEvents = deduplicateEvents(
-      mergedEvents,
-    ).map((e) => ({
+    const allEvents = deduplicateEvents(mergedEvents).map((e) => ({
       ...e,
       eventYear: currentYear,
+      fetchedAt: year,
     }));
 
     // ─────────────────────────────────────
@@ -794,9 +749,7 @@ export const runYearlyCron = async (req, res) => {
     }).select("name date");
 
     const existingKeys = new Set(
-      existing.map((e) =>
-        normalizeKey(e.name, e.date),
-      ),
+      existing.map((e) => normalizeKey(e.name, e.date)),
     );
 
     // ─────────────────────────────────────
@@ -830,17 +783,22 @@ export const runYearlyCron = async (req, res) => {
     // ─────────────────────────────────────
 
     if (newEvents.length > 0) {
-      await YearEvent.insertMany(newEvents, {
-        ordered: false,
-      });
+      try {
+        await YearEvent.insertMany(newEvents, {
+          ordered: false,
+        });
 
-      console.log(
-        `✅ [Yearly Cron] Inserted ${newEvents.length} new event(s)`,
-      );
+        console.log(
+          `✅ [Yearly Cron] Inserted ${newEvents.length} new event(s)`,
+        );
+      } catch (insertErr) {
+        console.warn(
+          "⚠️ [Yearly Cron] Some duplicates skipped:",
+          insertErr.message,
+        );
+      }
     } else {
-      console.log(
-        "✅ [Yearly Cron] No new events to insert",
-      );
+      console.log("✅ [Yearly Cron] No new events to insert");
     }
 
     // ─────────────────────────────────────
@@ -851,20 +809,15 @@ export const runYearlyCron = async (req, res) => {
       success: true,
       year: currentYear,
       inserted: newEvents.length,
-
       breakdown: {
         calendarific: calEvents.length,
         googleCalendar: gcalEvents.length,
-        teluguEvents: teluguEvents.length,
         monthlyFestivals: monthlyEvents.length,
-        finalUnique: allEvents.length,
+        finalUnique: newEvents.length,
       },
     });
   } catch (err) {
-    console.error(
-      "❌ [Yearly Cron] Error:",
-      err.message,
-    );
+    console.error("❌ [Yearly Cron] Error:", err.message);
 
     return res.status(500).json({
       success: false,

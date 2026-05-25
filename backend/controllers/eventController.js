@@ -289,8 +289,8 @@ export const deleteCustomEvent = async (req, res) => {
 
 export const addEvent = async (req, res) => {
   try {
-    const { name, date, description, region } = req.body;
-
+    const { name, date, description, category, region } = req.body;
+  
     // ─────────────────────────────────────
     // Validation
     // ─────────────────────────────────────
@@ -328,7 +328,6 @@ export const addEvent = async (req, res) => {
     if (!isFullDate && !isAnnualDate) {
       return res.json({
         success: false,
-
         message: "Date must be YYYY-MM-DD or MM-DD",
       });
     }
@@ -376,7 +375,7 @@ export const addEvent = async (req, res) => {
       date: normalizedDate,
       isAnnual: isAnnualDate,
       region: (region || "telangana").toLowerCase(),
-      category: "custom",
+      category: (category || "custom").toLowerCase(),
       emoji: "🎉",
       country: "India",
       tags: [normalizedName.toLowerCase()],

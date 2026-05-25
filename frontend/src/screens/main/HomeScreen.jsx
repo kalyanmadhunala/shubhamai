@@ -153,6 +153,18 @@ const getMonthDay = dateStr => {
   };
 };
 
+const formatLabel = text => {
+  if (!text) {
+    return '';
+  }
+
+  return text
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 function TodayEventCard({ event, onPress }) {
   const { month, day } = getMonthDay(event.date);
   const regionStyle = getRegionStyle(event);
@@ -270,33 +282,47 @@ function TodayEventCard({ event, onPress }) {
                 alignItems: 'center',
                 gap: scale(6),
                 flexWrap: 'wrap',
-                marginTop: 6,
               }}
             >
-              {!!regionLabel && (
+              {!!(event.country || event.emoji) && (
                 <View
                   style={{
                     backgroundColor: regionStyle.bg,
-
                     borderRadius: 999,
-
                     paddingHorizontal: 8,
-
                     paddingVertical: 2,
                   }}
                 >
                   <Text
                     style={{
                       color: regionStyle.text,
-
                       fontSize: moderateScale(10),
-
                       fontFamily: 'Inter-SemiBold',
-
                       textTransform: 'capitalize',
                     }}
                   >
-                    {regionLabel}
+                    {formatLabel(event?.country)}
+                  </Text>
+                </View>
+              )}
+              {event.region && (
+                <View
+                  style={{
+                    backgroundColor: regionStyle.bg,
+                    borderRadius: 999,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: regionStyle.text,
+                      fontSize: moderateScale(10),
+                      fontFamily: 'Inter-SemiBold',
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {formatLabel(event.region)}
                   </Text>
                 </View>
               )}
@@ -364,6 +390,7 @@ export default function HomeScreen({ navigation }) {
       });
 
       setTopEvents(uniqueEvents);
+      
     } catch (err) {
       console.log('Today Events Error:', err);
 
@@ -380,6 +407,8 @@ export default function HomeScreen({ navigation }) {
       scrollY.value = event.contentOffset.y;
     },
   });
+
+  //console.log(topEvents);
 
   const animatedHeaderStyle = useAnimatedStyle(() => {
     return {

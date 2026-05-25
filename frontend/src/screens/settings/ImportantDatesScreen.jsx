@@ -84,33 +84,23 @@ const REGION_COLORS = {
 
 export default function ImportantDatesScreen() {
   const [dates, setDates] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
   const [refreshing, setRefreshing] = useState(false);
-
   const [modalVisible, setModalVisible] = useState(false);
-
   const [activeTab, setActiveTab] = useState('single');
-
   const [form, setForm] = useState({ ...EMPTY_FORM });
-
   const [jsonText, setJsonText] = useState('');
-
   const [parsedPreview, setParsedPreview] = useState(null);
-
   const [importing, setImporting] = useState(false);
-
+  const [saving, setSaving] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
-
   const [selectedDeleteId, setSelectedDeleteId] = useState(null);
-
   const [copied, setCopied] = useState(false);
 
   const insets = useSafeAreaInsets();
-
   const { width } = useWindowDimensions();
-
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const dateRef = useRef(null);
@@ -131,7 +121,8 @@ List each event as a separate object, even if multiple events occur on the same 
   {
     name: 'Bathukamma Festival',
     date: 'YYYY-MM-DD',
-    description: "Wishes reletad to event name (Ex. Happy Bathukamma)"
+    description: "Wishes reletad to event name (Ex. Happy Bathukamma)",
+    category: "Personal/Festival/Business/Family/Custom"
     region: 'Telangana',
   },
 ]`;
@@ -187,13 +178,9 @@ List each event as a separate object, even if multiple events occur on the same 
 
   const openAdd = () => {
     setForm({ ...EMPTY_FORM });
-
     setJsonText('');
-
     setParsedPreview(null);
-
     setActiveTab('single');
-
     setModalVisible(true);
   };
 
@@ -215,13 +202,13 @@ List each event as a separate object, even if multiple events occur on the same 
     }
 
     try {
+      setSaving(true);
+
       await eventsService.addEvent({
         name: form.title.trim(),
-
         date: form.date.trim(),
-
         description: form.description.trim(),
-
+        category: form.category.trim(),
         region: 'telangana',
       });
 
@@ -232,6 +219,8 @@ List each event as a separate object, even if multiple events occur on the same 
       fetchCustomEvents();
     } catch (err) {
       toast.error(err?.message || 'Failed to add event');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -239,8 +228,10 @@ List each event as a separate object, even if multiple events occur on the same 
   // PARSE JSON
   // ─────────────────────────────────────
 
-  const handleParseJSON = () => {
+  const handleParseJSON = async () => {
     try {
+      setParsing(true);
+
       let parsed;
 
       // Try strict JSON first
@@ -260,6 +251,8 @@ List each event as a separate object, even if multiple events occur on the same 
       console.log(err);
 
       toast.error('Invalid JSON format');
+    } finally {
+      setParsing(false);
     }
   };
 
@@ -291,15 +284,15 @@ List each event as a separate object, even if multiple events occur on the same 
 
   const confirmDelete = async () => {
     try {
+      setDeleting(true);
       await eventsService.deleteCustomEvent(selectedDeleteId);
-
       toast.success('Event deleted successfully');
-
       setDeleteModal(false);
-
       fetchCustomEvents();
     } catch (err) {
       toast.error(err?.message || 'Delete failed');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -513,7 +506,7 @@ List each event as a separate object, even if multiple events occur on the same 
                         textTransform: 'capitalize',
                       }}
                     >
-                      {item.category === 'national' ? 'India' : item.category}
+                      {item.category}
                     </Text>
                   </View>
                 )}
@@ -1264,11 +1257,13 @@ List each event as a separate object, even if multiple events occur on the same 
                   {/* Save button — full-width gradient, matches Image 2 */}
                   <TouchableOpacity
                     onPress={handleSave}
+                    disabled={saving}
                     activeOpacity={0.88}
                     style={{
                       borderRadius: scale(14),
                       overflow: 'hidden',
                       marginBottom: scale(10),
+                      opacity: saving ? 0.7 : 1,
                     }}
                   >
                     <LinearGradient
@@ -1290,7 +1285,7 @@ List each event as a separate object, even if multiple events occur on the same 
                           fontFamily: 'Inter-Bold',
                         }}
                       >
-                        Save Event
+                        {saving ? 'Saving...' : 'Save Event'}
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -1443,8 +1438,13 @@ List each event as a separate object, even if multiple events occur on the same 
                   {!parsedPreview ? (
                     <TouchableOpacity
                       onPress={handleParseJSON}
+                      disabled={parsing}
                       activeOpacity={0.88}
-                      style={{ borderRadius: scale(14), overflow: 'hidden' }}
+                      style={{
+                        borderRadius: scale(14),
+                        overflow: 'hidden',
+                        opacity: parsing ? 0.7 : 1,
+                      }}
                     >
                       <LinearGradient
                         colors={GRADIENTS.primary}
@@ -1462,7 +1462,7 @@ List each event as a separate object, even if multiple events occur on the same 
                             fontFamily: 'Inter-Bold',
                           }}
                         >
-                          Parse & Preview
+                          {parsing ? 'Parsing...' : 'Parse & Preview'}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -1484,7 +1484,7 @@ List each event as a separate object, even if multiple events occur on the same 
                             marginBottom: 8,
                           }}
                         >
-                          <CircleCheck size={22} className="text-green-500" />{' '}
+                          <CircleCheck size={16} className="text-green-500" />{' '}
                           {parsedPreview.length} event(s) parsed — preview:
                         </Text>
                         {parsedPreview.slice(0, 3).map((e, i) => (
@@ -1516,11 +1516,13 @@ List each event as a separate object, even if multiple events occur on the same 
 
                       <TouchableOpacity
                         onPress={handleBulkImport}
+                        disabled={importing}
                         activeOpacity={0.88}
                         style={{
                           borderRadius: scale(14),
                           overflow: 'hidden',
                           marginBottom: scale(10),
+                          opacity: importing ? 0.7 : 1,
                         }}
                       >
                         <LinearGradient
@@ -1539,8 +1541,9 @@ List each event as a separate object, even if multiple events occur on the same 
                               fontFamily: 'Inter-Bold',
                             }}
                           >
-                            <Import size={16} color="#FFFFFF" /> Import{' '}
-                            {parsedPreview.length} Events
+                            {importing
+                              ? 'Importing...'
+                              : `Import ${parsedPreview.length} Events`}
                           </Text>
                         </LinearGradient>
                       </TouchableOpacity>
@@ -1674,26 +1677,22 @@ List each event as a separate object, even if multiple events occur on the same 
               {/* Cancel */}
               <TouchableOpacity
                 onPress={() => setDeleteModal(false)}
+                disabled={deleting}
                 activeOpacity={0.85}
                 style={{
                   flex: 1,
-
                   height: scale(52),
-
                   borderRadius: scale(16),
-
                   backgroundColor: '#F3F4F6',
-
                   alignItems: 'center',
                   justifyContent: 'center',
+                  opacity: deleting ? 0.6 : 1,
                 }}
               >
                 <Text
                   style={{
                     color: '#6B7280',
-
                     fontSize: moderateScale(14),
-
                     fontFamily: 'Inter-SemiBold',
                   }}
                 >
@@ -1704,13 +1703,13 @@ List each event as a separate object, even if multiple events occur on the same 
               {/* Delete */}
               <TouchableOpacity
                 onPress={confirmDelete}
+                disabled={deleting}
                 activeOpacity={0.9}
                 style={{
                   flex: 1,
-
                   borderRadius: scale(16),
-
                   overflow: 'hidden',
+                  opacity: deleting ? 0.7 : 1,
                 }}
               >
                 <LinearGradient
@@ -1727,13 +1726,11 @@ List each event as a separate object, even if multiple events occur on the same 
                   <Text
                     style={{
                       color: '#FFFFFF',
-
                       fontSize: moderateScale(14),
-
                       fontFamily: 'Inter-Bold',
                     }}
                   >
-                    Delete
+                    {deleting ? 'Deleting...' : 'Delete'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>

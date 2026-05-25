@@ -22,6 +22,7 @@ const todayEventSchema = new Schema(
 
     category: { type: String, trim: true, default: "General" },
     emoji: { type: String, default: "🎉" },
+    country: { type: String, default: "" },
     tags: [{ type: String }],
 
     source: {

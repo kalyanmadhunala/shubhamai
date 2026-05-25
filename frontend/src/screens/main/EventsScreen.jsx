@@ -268,7 +268,7 @@ function EventCard({ event, onPress, index, monthLabel, date }) {
                   flexWrap: 'wrap',
                 }}
               >
-                {!!(event.category || event.region) && (
+                {!!(event.country || event.emoji) && (
                   <View
                     style={{
                       backgroundColor: regionStyle.bg,
@@ -285,12 +285,28 @@ function EventCard({ event, onPress, index, monthLabel, date }) {
                         textTransform: 'capitalize',
                       }}
                     >
-                      {formatLabel(
-                        event.category ||
-                          (event.region === 'national'
-                            ? 'India'
-                            : event.region),
-                      )}
+                      {formatLabel(event.country || event.emoji)}
+                    </Text>
+                  </View>
+                )}
+                {event.region && (
+                  <View
+                    style={{
+                      backgroundColor: regionStyle.bg,
+                      borderRadius: 999,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: regionStyle.text,
+                        fontSize: moderateScale(10),
+                        fontFamily: 'Inter-SemiBold',
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {formatLabel(event.region)}
                     </Text>
                   </View>
                 )}

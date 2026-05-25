@@ -42,11 +42,13 @@ const eventsService = {
     }),
 
   // POST /api/events
-  addEvent: body =>
-    request('/events', {
+  addEvent: body => {
+    console.log(body);
+    return request('/events', {
       method: 'POST',
       body: JSON.stringify(body),
-    }),
+    });
+  },
 
   // POST /api/events/bulk
   bulkAddEvents: events =>
