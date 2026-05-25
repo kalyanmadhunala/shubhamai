@@ -257,7 +257,7 @@ export default function SplashScreen({ navigation }) {
         >
           <ActivityIndicator size="large" color="#FFFFFF" />
 
-          <Text
+          {/* <Text
             style={{
               marginTop: scale(14),
               fontSize: moderateScale(13),
@@ -267,7 +267,7 @@ export default function SplashScreen({ navigation }) {
             }}
           >
             {loadingText}
-          </Text>
+          </Text> */}
         </View>
 
         {/* Bottom Note */}
