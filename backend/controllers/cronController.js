@@ -532,7 +532,6 @@ export const runDailyCron = async (req, res) => {
 
     const customEvents = await YearEvent.find({
       isActive: true,
-
       $and: [
         {
           $or: [
@@ -656,13 +655,7 @@ export const runYearlyCron = async (req, res) => {
         { source: "calendarific", eventYear: prevYear },
         { source: "google_calendar", eventYear: prevYear },
         { source: "drik_panchang", eventYear: prevYear },
-        {
-          category: {
-            $in: ["custom", "festival", "personal", "business", "family"],
-          },
-          isAnnual: false,
-          eventYear: prevYear,
-        },
+        { source: "local",eventYear: prevYear, isAnnual: false },
       ],
     });
 

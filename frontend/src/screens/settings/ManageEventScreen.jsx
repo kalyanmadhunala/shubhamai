@@ -160,7 +160,25 @@ export default function ManageEventScreen({ route }) {
       };
     }
 
-    const d = new Date(dateStr);
+    let d;
+
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      d = new Date(dateStr);
+    }
+
+    // MM-DD
+    else if (/^\d{2}-\d{2}$/.test(dateStr)) {
+      d = new Date(`2000-${dateStr}`);
+    }
+
+    // Invalid fallback
+    else {
+      return {
+        month: '---',
+        day: '--',
+      };
+    }
 
     return {
       month: d
@@ -205,7 +223,6 @@ export default function ManageEventScreen({ route }) {
       }
 
       toast.success('Event deleted successfully');
-
       setDeleteModal(false);
       fetchEvents();
     } catch (err) {

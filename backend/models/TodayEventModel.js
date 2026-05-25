@@ -15,7 +15,14 @@ const todayEventSchema = new Schema(
 
     region: {
       type: String,
-      enum: ["international","national","telangana", "india", "local", "custom",],
+      enum: [
+        "international",
+        "national",
+        "telangana",
+        "india",
+        "local",
+        "custom",
+      ],
       required: true,
       lowercase: true,
     },
@@ -44,11 +51,7 @@ const todayEventSchema = new Schema(
     fetchDate: { type: String, required: true, index: true },
 
     // For custom events: reference back to the CustomEvent document
-    customEventId: {
-      type: Schema.Types.ObjectId,
-      ref: "CustomEvent",
-      default: null,
-    },
+    customEventId: { type: String, default: "" },
   },
   { timestamps: true },
 );

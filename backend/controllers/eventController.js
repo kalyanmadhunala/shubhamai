@@ -164,6 +164,7 @@ export const searchEvents = async (req, res) => {
         { source: "calendarific" },
         { source: "google_calendar" },
         { source: "drik_panchang" },
+        { source: "local" },
       ],
     })
       .sort({ date: 1 })
@@ -251,7 +252,7 @@ export const getCustomEvents = async (req, res) => {
     // Get only user-added custom/local events
     const events = await YearEvent.find({
       isActive: true,
-      category: "custom",
+      source: "local",
     }).sort({ date: 1 });
 
     return res.json({
@@ -473,7 +474,7 @@ export const bulkAddEvents = async (req, res) => {
         emoji: e.emoji || "🎉",
         country: e.country || "India",
         tags: e.tags || [normalizedName.toLowerCase()],
-        source: e.source || "local",
+        source: "local",
         promptHint: e.promptHint || "",
         isActive: true,
         eventYear,
