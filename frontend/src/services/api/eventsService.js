@@ -50,6 +50,19 @@ const eventsService = {
     });
   },
 
+  // DELETE TODAY EVENT
+
+  deleteTodayEvent: id =>
+    request(`/events/todayevent/${id}`, {
+      method: 'POST',
+    }),
+
+  // DELETE YEAR EVENT
+  deleteYearEvent: id =>
+    request(`/events/yearevent/${id}`, {
+      method: 'POST',
+    }),
+
   // POST /api/events/bulk
   bulkAddEvents: events =>
     request('/events/bulk', {

@@ -186,13 +186,9 @@ export const searchEvents = async (req, res) => {
   }
 };
 
-
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/events/all
 // ─────────────────────────────────────────────────────────────────────────────
-
 
 export const getAllYearEvents = async (req, res) => {
   try {
@@ -201,13 +197,6 @@ export const getAllYearEvents = async (req, res) => {
     const events = await YearEvent.find({
       isActive: true,
       eventYear: currentYear,
-
-      $or: [
-        { category: "custom" },
-        { source: "calendarific" },
-        { source: "google_calendar" },
-        { source: "drik_panchang" },
-      ],
     }).sort({ date: 1 });
 
     return res.json({
@@ -223,20 +212,35 @@ export const getAllYearEvents = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/events/:id
-// ─────────────────────────────────────────────────────────────────────────────
-export const getEventById = async (req, res) => {
+// DELETE /api/events/yearevents/:id
+export const deleteYearEventById = async (req, res) => {
   try {
-    // Check both collections
-    const event =
-      (await TodayEvent.findById(req.params.id)) ||
-      (await YearEvent.findById(req.params.id));
+    const { id } = req.params;
+
+    const event = await YearEvent.findByIdAndDelete(id);
 
     if (!event) {
-      return res.json({ success: false, message: "Event not found." });
+      return res.status(404).json({ success: false, message: "Event not found." });
     }
-    return res.json({ success: true, event });
+
+    return res.status(200).json({ success: true, message: "Event deleted from the Database." });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// DELETE /api/events/todayevents/:id
+export const deleteTodayEventById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const event = await TodayEvent.findByIdAndDelete(id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Event not found." });
+    }
+
+    return res.status(200).json({ success: true, message: "Today event deleted." });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -290,7 +294,7 @@ export const deleteCustomEvent = async (req, res) => {
 export const addEvent = async (req, res) => {
   try {
     const { name, date, description, category, region } = req.body;
-  
+
     // ─────────────────────────────────────
     // Validation
     // ─────────────────────────────────────
@@ -508,9 +512,7 @@ export const bulkAddEvents = async (req, res) => {
     if (!newEvents.length) {
       return res.status(200).json({
         success: true,
-
         message: "All events already exist",
-
         inserted: 0,
       });
     }
@@ -544,7 +546,8 @@ export default {
   getEvents,
   getAllYearEvents,
   getTodayEvents,
-  getEventById,
+  deleteYearEventById,
+  deleteTodayEventById,
   searchEvents,
   addEvent,
   bulkAddEvents,

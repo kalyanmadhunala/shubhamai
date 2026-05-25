@@ -42,6 +42,7 @@ import ImportantDatesScreen from '../screens/settings/ImportantDatesScreen';
 import SettingScreen from '../screens/settings/SettingScreen';
 import ProfileScreen from '../screens/settings/ProfileScreen';
 import BusinessProfileScreen from '../screens/settings/BusinessProfileScreen';
+import ManageEventScreen from '../screens/settings/ManageEventScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 const RootStack = createNativeStackNavigator();
@@ -306,6 +307,10 @@ function SettingsTabStack() {
       <SettingsStack.Screen
         name={ROUTES.IMPORTANT_DATES}
         component={ImportantDatesScreen}
+      />
+      <SettingsStack.Screen
+        name={ROUTES.MANAGE_EVENTS}
+        component={ManageEventScreen}
       />
     </SettingsStack.Navigator>
   );

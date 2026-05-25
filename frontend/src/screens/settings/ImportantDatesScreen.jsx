@@ -33,6 +33,8 @@ import {
   CircleX,
   CircleCheck,
   CalendarDays,
+  Search,
+  X,
 } from 'lucide-react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
@@ -95,6 +97,8 @@ export default function ImportantDatesScreen() {
   const PAGE_SIZE = 10;
   const [page, setPage] = useState(1);
   const [paginatedDates, setPaginatedDates] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredDates, setFilteredDates] = useState([]);
 
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -134,6 +138,7 @@ List each event as a separate object, even if multiple events occur on the same 
 
       const events = response?.events || [];
       setDates(events);
+      setFilteredDates(events);
       setPage(1);
       paginateDates(events, 1);
     } catch (err) {
@@ -303,12 +308,13 @@ List each event as a separate object, even if multiple events occur on the same 
   };
 
   const handleLoadMore = () => {
-    if (paginatedDates.length >= dates.length) {
+    if (paginatedDates.length >= filteredDates.length) {
       return;
     }
     const nextPage = page + 1;
     setPage(nextPage);
-    paginateDates(dates, nextPage);
+
+    paginateDates(filteredDates, nextPage);
   };
 
   // ─────────────────────────────────────
@@ -355,10 +361,34 @@ List each event as a separate object, even if multiple events occur on the same 
     return item.region || 'Custom';
   };
 
-  const paginateDates = (events, pageNumber = 1) => {
-    const sliced = events.slice(0, pageNumber * PAGE_SIZE);
+  const paginateDates = (eventsList, pageNumber = 1) => {
+    const sliced = eventsList.slice(0, pageNumber * PAGE_SIZE);
 
     setPaginatedDates(sliced);
+  };
+
+  const handleSearch = text => {
+    setSearchQuery(text);
+    if (!text.trim()) {
+      setFilteredDates(dates);
+      setPage(1);
+      paginateDates(dates, 1);
+      return;
+    }
+
+    const search = text.toLowerCase();
+    const filtered = dates.filter(item => {
+      return (
+        item.name?.toLowerCase().includes(search) ||
+        item.category?.toLowerCase().includes(search) ||
+        item.region?.toLowerCase().includes(search) ||
+        item.date?.toLowerCase().includes(search)
+      );
+    });
+
+    setFilteredDates(filtered);
+    setPage(1);
+    paginateDates(filtered, 1);
   };
 
   if (loading) {
@@ -528,7 +558,6 @@ List each event as a separate object, even if multiple events occur on the same 
               </View>
             </View>
           </View>
-
           <TouchableOpacity
             onPress={() => handleDelete(item._id)}
             activeOpacity={0.8}
@@ -650,8 +679,8 @@ List each event as a separate object, even if multiple events occur on the same 
               marginTop: 2,
             }}
           >
-            {dates.length} event
-            {dates.length !== 1 ? 's' : ''} in dataset
+            {filteredDates.length} event
+            {filteredDates.length !== 1 ? 's' : ''} in dataset
           </Text>
         </View>
 
@@ -685,6 +714,72 @@ List each event as a separate object, even if multiple events occur on the same 
             </Text>
           </LinearGradient>
         </TouchableOpacity>
+      </View>
+
+
+      {/* Search Bar */}
+      <View
+        style={{
+          paddingHorizontal: scale(16),
+          paddingTop: verticalScale(14),
+          paddingBottom: verticalScale(8),
+          backgroundColor: '#FFFFFF',
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#FFFFFF',
+            borderRadius: moderateScale(16),
+            height: verticalScale(50),
+            paddingHorizontal: scale(16),
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.12,
+            shadowRadius: 16,
+            elevation: 8,
+            gap: scale(10),
+          }}
+        >
+          <Search size={20} color={COLORS.primary} strokeWidth={2} />
+
+          <TextInput
+            value={searchQuery}
+            onChangeText={handleSearch}
+            placeholder="Search events..."
+            placeholderTextColor="#9CA3AF"
+            style={{
+              flex: 1,
+              color: '#111827',
+              fontSize: moderateScale(14),
+              fontFamily: 'Inter-Regular',
+              paddingVertical: 0,
+            }}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+
+          {!!searchQuery && (
+            <TouchableOpacity
+              onPress={() => handleSearch('')}
+              activeOpacity={0.75}
+            >
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: '#F3F4F6',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <X size={13} color="#6B7280" strokeWidth={2.5} />
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* LIST */}
@@ -732,7 +827,7 @@ List each event as a separate object, even if multiple events occur on the same 
                 textAlign: 'center',
               }}
             >
-              No dates added yet
+              {searchQuery ? 'No search results found' : 'No dates added yet'}
             </Text>
             <Text
               style={{

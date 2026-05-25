@@ -653,21 +653,9 @@ export const runYearlyCron = async (req, res) => {
 
     const deleted = await YearEvent.deleteMany({
       $or: [
-        {
-          source: "calendarific",
-          eventYear: prevYear,
-        },
-
-        {
-          source: "google_calendar",
-          eventYear: prevYear,
-        },
-
-        {
-          source: "drik_panchang",
-          eventYear: prevYear,
-        },
-        // Remove old one-time custom, festival, personal, business, family events
+        { source: "calendarific", eventYear: prevYear },
+        { source: "google_calendar", eventYear: prevYear },
+        { source: "drik_panchang", eventYear: prevYear },
         {
           category: {
             $in: ["custom", "festival", "personal", "business", "family"],

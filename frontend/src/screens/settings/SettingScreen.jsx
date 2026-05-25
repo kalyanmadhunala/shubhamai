@@ -146,8 +146,7 @@ function SettingsRow({
 
       {/* Right element */}
       {rightElement ||
-        (onPress ? (<ChevronRight size={18} color="#BDBDBD"/>
-        ) : null)}
+        (onPress ? <ChevronRight size={18} color="#BDBDBD" /> : null)}
     </TouchableOpacity>
   );
 }
@@ -396,6 +395,33 @@ export default function SettingsScreen({ navigation }) {
           />
         </SettingsSection>
 
+        {/* ── Events Section ── */}
+        <SettingsSection title="Manage Events">
+          <SettingsRow
+            icon={<User size={22} color="#00BCD4" />}
+            iconBg="#E3F2FD"
+            label="Today's Events"
+            sublabel="Manage today's events"
+            onPress={() =>
+              navigation.navigate('ManageEvents', {
+                type: 'today',
+              })
+            }
+          />
+          <SettingsRow
+            icon={<Building2 size={22} color="#0A8114" />}
+            iconBg="#E8F5E9"
+            label="All Events"
+            sublabel="Manage all events"
+            onPress={() =>
+              navigation.navigate('ManageEvents', {
+                type: 'year',
+              })
+            }
+            isLast
+          />
+        </SettingsSection>
+
         {/* ── About Section ── */}
         <SettingsSection title="About">
           <SettingsRow
@@ -446,7 +472,7 @@ export default function SettingsScreen({ navigation }) {
               fontFamily: 'Inter-Regular',
             }}
           >
-            ShubhaM.Ai • v1.0.0 • Made in India  🇮🇳
+            ShubhaM.Ai • v1.0.0 • Made in India 🇮🇳
           </Text>
         </View>
       </ScrollView>

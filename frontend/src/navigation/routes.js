@@ -13,4 +13,5 @@ export const ROUTES = {
   PROFILE:          'Profile',
   BUSINESS_PROFILE: 'BusinessProfile',
   IMPORTANT_DATES:  'ImportantDates',
+  MANAGE_EVENTS:     'ManageEvents',
 };
