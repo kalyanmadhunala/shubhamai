@@ -543,13 +543,6 @@ export const runDailyCron = async (req, res) => {
       $and: [
         {
           $or: [
-            { category: "custom" },
-            { source: "drik_panchang" },
-          ],
-        },
-
-        {
-          $or: [
             { date: today }, // YYYY-MM-DD
             { date: mmdd },  // MM-DD recurring
           ],
