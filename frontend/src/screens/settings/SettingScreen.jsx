@@ -574,7 +574,7 @@ export default function SettingsScreen({ navigation }) {
             label="About"
             sublabel="Version 1.0.0"
             onPress={() =>
-              toast.info('ShubhaM.Ai v1.0.0\nMade with ❤️ in India')
+              toast.info('ShubhaM.Ai 2.4.3\nMade with ❤️ in India')
             }
             isLast
           />
@@ -602,7 +602,7 @@ export default function SettingsScreen({ navigation }) {
               fontFamily: 'Inter-Regular',
             }}
           >
-            ShubhaM.Ai • v1.0.0 • Made in India 🇮🇳
+            ShubhaM.Ai • 2.4.3 • Made in India 🇮🇳
           </Text>
         </View>
       </ScrollView>
