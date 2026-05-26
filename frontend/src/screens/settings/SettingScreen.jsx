@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Sparkles,
   CalendarDays,
+  Calendar1,
   CalendarClock,
   CalendarX,
   User,
@@ -398,8 +399,8 @@ export default function SettingsScreen({ navigation }) {
         {/* ── Events Section ── */}
         <SettingsSection title="Manage Events">
           <SettingsRow
-            icon={<User size={22} color="#00BCD4" />}
-            iconBg="#E3F2FD"
+            icon={<Calendar1 size={22} color="#B12D4F" />}
+            iconBg="#EFCCB9"
             label="Today's Events"
             sublabel="Manage today's events"
             onPress={() =>
@@ -409,8 +410,8 @@ export default function SettingsScreen({ navigation }) {
             }
           />
           <SettingsRow
-            icon={<Building2 size={22} color="#0A8114" />}
-            iconBg="#E8F5E9"
+            icon={<CalendarDays size={22} color="#E68D20" />}
+            iconBg="#F6E6C9"
             label="All Events"
             sublabel="Manage all events"
             onPress={() =>
