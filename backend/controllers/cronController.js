@@ -671,7 +671,7 @@ export const runYearlyCron = async (req, res) => {
       eventYear: currentYear,
 
       source: {
-        $in: ["calendarific", "google_calendar", "drik_panchang"],
+        $in: ["calendarific", "google_calendar", "drik_panchang", "local"],
       },
     });
 

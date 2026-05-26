@@ -168,7 +168,7 @@ export const searchEvents = async (req, res) => {
       ],
     })
       .sort({ date: 1 })
-      .limit(2000);
+      .limit(5000);
 
     // ─────────────────────────────────────
     // Response
