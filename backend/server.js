@@ -40,6 +40,29 @@ app.get("/", (_, res) => {
   res.send("OK");
 });
 
+app.post("/api/admincodecheck", (req, res) => {
+  const { admincode } = req.body;
+  if (!admincode) {
+    return res.status(400).json({
+      success: false,
+      message: "Activation code is required.",
+    });
+  }
+  try {
+    const isMatch = admincode === process.env.ADMIN_CODE;
+    if (isMatch) {
+      return res.json({
+        success: true,
+        message: "Admin Activation successful",
+      });
+    } else {
+      return res.json({ success: false, message: "Invalid activation code." });
+    }
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+});
+
 // Routes
 app.use("/api/events", eventRoutes);
 app.use("/api/cron", cronRoutes);

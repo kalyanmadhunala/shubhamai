@@ -16,14 +16,6 @@ const yearEventSchema = new Schema(
 
     region: {
       type: String,
-      enum: [
-        "international",
-        "national",
-        "telangana",
-        "india",
-        "local",
-        "custom",
-      ],
       required: true,
       lowercase: true,
     },

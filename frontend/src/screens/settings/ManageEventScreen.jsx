@@ -25,10 +25,10 @@ import { COLORS } from '../../constants/colors';
 import Loader from '../../components/common/Loader';
 
 import { scale, verticalScale, moderateScale } from '../../utils/responsive';
-
+import { useNavigation } from '@react-navigation/native';
 import { toast, Toaster } from 'sonner-native';
-
 import eventsService from '../../services/api/eventsService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const REGION_COLORS = {
   telangana: {
@@ -57,6 +57,7 @@ export default function ManageEventScreen({ route }) {
   const isToday = type === 'today';
   const PAGE_SIZE = 10;
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const [dates, setDates] = useState([]);
   const [filteredDates, setFilteredDates] = useState([]);
   const [paginatedDates, setPaginatedDates] = useState([]);
@@ -66,6 +67,25 @@ export default function ManageEventScreen({ route }) {
   const [deleteModal, setDeleteModal] = useState(false);
   const [selectedDeleteId, setSelectedDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  const checkAdminAccess = async () => {
+    try {
+      const code = await AsyncStorage.getItem('ADMIN_CODE_KEY');
+
+      if (!code) {
+        toast.error('Admin access required');
+        navigation.goBack();
+        return;
+      }
+
+      setIsAuthorized(true);
+
+      fetchEvents();
+    } catch (err) {
+      toast.error('Authorization failed');
+    }
+  };
 
   // ─────────────────────────────
   // FETCH EVENTS
@@ -96,7 +116,7 @@ export default function ManageEventScreen({ route }) {
   };
 
   useEffect(() => {
-    fetchEvents();
+    checkAdminAccess();
   }, []);
 
   // ─────────────────────────────
@@ -213,9 +233,11 @@ export default function ManageEventScreen({ route }) {
     try {
       setDeleting(true);
 
+      const admincode = await AsyncStorage.getItem('ADMIN_CODE_KEY');
+
       const response = isToday
-        ? await eventsService.deleteTodayEvent(selectedDeleteId)
-        : await eventsService.deleteYearEvent(selectedDeleteId);
+        ? await eventsService.deleteTodayEvent(selectedDeleteId, admincode)
+        : await eventsService.deleteYearEvent(selectedDeleteId, admincode);
 
       if (!response?.success) {
         toast.error(response?.message || 'Delete failed');
@@ -235,6 +257,28 @@ export default function ManageEventScreen({ route }) {
   // ─────────────────────────────
   // LOADER
   // ─────────────────────────────
+  if (!isAuthorized) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#fff',
+        }}
+      >
+        <Text
+          style={{
+            fontFamily: 'Inter-Bold',
+            fontSize: 18,
+            color: '#111827',
+          }}
+        >
+          Admin Access Required
+        </Text>
+      </View>
+    );
+  }
 
   if (loading) {
     return <Loader message="Loading events..." />;

@@ -387,6 +387,7 @@ export default function EventsScreen({ navigation, route }) {
   const [grouped, setGrouped] = useState(null);
   const [flatList, setFlatList] = useState([]);
   const [allGroupedEvents, setAllGroupedEvents] = useState({
+    all: [],
     telangana: [],
     national: [],
     international: [],
@@ -421,9 +422,7 @@ export default function EventsScreen({ navigation, route }) {
     // ALL
     if (categoryId === 'all') {
       setGrouped(allGroupedEvents);
-
-      setFlatList([]);
-
+      setFlatList(allGroupedEvents.all || []);
       return;
     }
 
@@ -560,31 +559,36 @@ export default function EventsScreen({ navigation, route }) {
           })
           .sort((a, b) => {
             const dateA = parseEventDate(a.date);
+
             const dateB = parseEventDate(b.date);
 
             return dateA - dateB;
           });
       };
 
+      // Backend already grouped
       const groupedData = {
-        telangana: filterUpcoming(data?.telangana),
+        all: filterUpcoming(data?.all || []),
 
-        national: filterUpcoming(data?.national),
+        telangana: filterUpcoming(data?.telangana || []),
 
-        international: filterUpcoming(data?.international),
+        national: filterUpcoming(data?.india || []),
+
+        international: filterUpcoming(data?.international || []),
       };
 
       // Store master grouped state
       setAllGroupedEvents(groupedData);
 
-      // Initial display
+      // Initial ALL screen
       setGrouped(groupedData);
 
-      setFlatList([]);
+      // IMPORTANT
+      setFlatList(groupedData.all);
     } catch (err) {
       console.log('Fetch Events Error:', err);
 
-      setError(err?.response?.data?.message || 'Failed to load events.');
+      setError(err?.message || 'Failed to load events.');
     }
   }, [currentMonth, currentYear]);
 
@@ -613,25 +617,11 @@ export default function EventsScreen({ navigation, route }) {
     });
   };
 
-  // ── PRESERVED: buildAllData ───────────────────────────────────────────────
-  const buildAllData = () => {
-    if (!grouped) return [];
-    const rows = [];
-    SECTION_ORDER.forEach(key => {
-      const items = grouped[key] || [];
-      if (items.length > 0) {
-        rows.push({ type: 'section', key, _id: `section_${key}` });
-        items.forEach(ev => rows.push({ type: 'event', ...ev }));
-      }
-    });
-    return rows;
-  };
 
-  const allData = selectedRegion === 'all' ? buildAllData() : flatList;
+  const allData = flatList;
 
   // ── PRESERVED: renderItem ─────────────────────────────────────────────────
   const renderItem = ({ item, index }) => {
-    if (item.type === 'section') return <SectionHeader regionKey={item.key} />;
     return (
       <EventCard
         event={item}

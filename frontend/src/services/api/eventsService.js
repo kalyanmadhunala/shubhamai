@@ -7,9 +7,26 @@ const BASE = CONFIG.API_BASE_URL;
 const headers = { 'Content-Type': 'application/json' };
 
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, { headers, ...options });
-  const json = await res.json();
-  if (!res.ok) throw json;
+  const res = await fetch(`${BASE}${path}`, {
+    headers,
+    ...options,
+  });
+
+  let json;
+
+  try {
+    json = await res.json();
+  } catch (err) {
+    throw {
+      success: false,
+      message: 'Invalid server response',
+    };
+  }
+
+  if (!res.ok) {
+    throw json;
+  }
+
   return json;
 }
 
@@ -41,6 +58,13 @@ const eventsService = {
       method: 'POST',
     }),
 
+  //POST /api/admincodecheck
+  adminCodeCheck: admincode =>
+    request(`/admincodecheck`, {
+      method: 'POST',
+      body: JSON.stringify({ admincode }),
+    }),
+
   // POST /api/events
   addEvent: body => {
     console.log(body);
@@ -51,16 +75,17 @@ const eventsService = {
   },
 
   // DELETE TODAY EVENT
-
-  deleteTodayEvent: id =>
+  deleteTodayEvent: (id, admincode) =>
     request(`/events/todayevent/${id}`, {
       method: 'POST',
+      body: JSON.stringify({ admincode }),
     }),
 
   // DELETE YEAR EVENT
-  deleteYearEvent: id =>
+  deleteYearEvent: (id, admincode) =>
     request(`/events/yearevent/${id}`, {
       method: 'POST',
+      body: JSON.stringify({ admincode }),
     }),
 
   // POST /api/events/bulk

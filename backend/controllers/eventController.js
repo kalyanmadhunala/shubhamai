@@ -53,16 +53,21 @@ export const getEvents = async (req, res) => {
     const currentMonth = parseInt(month) || new Date().getMonth() + 1;
     const monthPadded = String(currentMonth).padStart(2, "0");
 
+    // Base query
     const query = {
       isActive: true,
+
       eventYear: currentYear,
+
       $or: [
+        // YYYY-MM-DD
         {
           date: {
             $regex: `^\\d{4}-${monthPadded}-\\d{2}$`,
           },
         },
 
+        // MM-DD
         {
           date: {
             $regex: `^${monthPadded}-\\d{2}$`,
@@ -71,26 +76,73 @@ export const getEvents = async (req, res) => {
       ],
     };
 
-    if (region !== "all") query.region = region;
+    // Optional region filter
+    if (region !== "all") {
+      query.region = region;
+    }
 
-    const events = await YearEvent.find(query).sort({ date: 1 });
+    // Fetch events
+    const events = await YearEvent.find(query).sort({ date: 1 }).lean();
 
-    const grouped = {
-      international: events.filter((e) => e.region === "international"),
-      national: events.filter((e) => e.region === "national"),
-      telangana: events.filter((e) => e.region === "telangana"),
+    // ─────────────────────────────
+    // GROUP EVENTS
+    // ─────────────────────────────
+
+    const groupedEvents = {
+      all: events,
+      telangana: [],
+      india: [],
+      international: [],
     };
+
+    events.forEach((event) => {
+      const region = String(event.region || "")
+        .toLowerCase()
+        .trim();
+
+      const country = String(event.country || "")
+        .toLowerCase()
+        .trim();
+
+      // Telangana
+      if (region === "telangana") {
+        groupedEvents.telangana.push(event);
+      }
+
+      // India
+      else if (
+        region === "india" ||
+        region === "national" ||
+        region === "local" ||
+        region === "custom" ||
+        country === "india"
+      ) {
+        groupedEvents.india.push(event);
+      }
+
+      // International
+      else {
+        groupedEvents.international.push(event);
+      }
+    });
+
+    // ─────────────────────────────
+    // RETURN RESPONSE
+    // ─────────────────────────────
 
     return res.json({
       success: true,
       total: events.length,
-      events: region === "all" ? grouped : events,
+      events: groupedEvents,
       region,
       month: currentMonth,
       year: currentYear,
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
@@ -217,14 +269,32 @@ export const getAllYearEvents = async (req, res) => {
 export const deleteYearEventById = async (req, res) => {
   try {
     const { id } = req.params;
+    const { admincode } = req.body;
+
+    if (!admincode) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin code is required.",
+      });
+    }
+
+    const isMatch = admincode === process.env.ADMIN_CODE;
+
+    if (!isMatch) {
+      return res.json({ success: false, message: "Invalid admin code" });
+    }
 
     const event = await YearEvent.findByIdAndDelete(id);
 
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found." });
     }
 
-    return res.status(200).json({ success: true, message: "Event deleted from the Database." });
+    return res
+      .status(200)
+      .json({ success: true, message: "Event deleted from the Database." });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -234,14 +304,32 @@ export const deleteYearEventById = async (req, res) => {
 export const deleteTodayEventById = async (req, res) => {
   try {
     const { id } = req.params;
+    const { admincode } = req.body;
+
+    if (!admincode) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin code is required.",
+      });
+    }
+
+    const isMatch = admincode === process.env.ADMIN_CODE;
+
+    if (!isMatch) {
+      return res.json({ success: false, message: "Invalid admin code" });
+    }
 
     const event = await TodayEvent.findByIdAndDelete(id);
 
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found." });
     }
 
-    return res.status(200).json({ success: true, message: "Today event deleted." });
+    return res
+      .status(200)
+      .json({ success: true, message: "Today event deleted." });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

@@ -26,16 +26,24 @@ import {
   Trash2,
   Star,
   Share2,
+  UserKey,
   Info,
+  Key,
+  Lock,
 } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, GRADIENTS } from '../../constants/colors';
 import { scale, verticalScale, moderateScale } from '../../utils/responsive';
 import { PROFILE_KEY } from '../main/HomeScreen';
 import { toast, Toaster } from 'sonner-native';
 import Modal from 'react-native-modal';
+import InputField from '../../components/common/InputField';
+import eventsService from '../../services/api/eventsService';
+
+const ADMIN_CODE_KEY = 'ADMIN_CODE_KEY';
 
 // Helper
 function getInitials(name = '') {
@@ -162,21 +170,52 @@ export default function SettingsScreen({ navigation }) {
   });
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [deleteModal, setDeleteModal] = useState(false);
+  const [adminCodeModal, setadminCodeModal] = useState(false);
+  const [admincode, setadmincode] = useState('');
+  const [isAdminActivated, setIsAdminActivated] = useState(false);
+  const [activatingAdmin, setActivatingAdmin] = useState(false);
+  const [errorText, setErrorText] = useState('');
 
-  useEffect(() => {
-    AsyncStorage.getItem(PROFILE_KEY)
-      .then(raw => {
-        if (raw) {
-          const p = JSON.parse(raw);
-          setProfile({
-            fullName: p.fullName || '',
-            businessName: p.businessName || '',
-            phone: p.phone || '',
-          });
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadData = async () => {
+        try {
+          // ─────────────────────────────
+          // PROFILE
+          // ─────────────────────────────
+
+          const raw = await AsyncStorage.getItem(PROFILE_KEY);
+
+          if (raw) {
+            const p = JSON.parse(raw);
+
+            setProfile({
+              fullName: p.fullName || '',
+              businessName: p.businessName || '',
+              phone: p.phone || '',
+            });
+          } else {
+            setProfile({
+              fullName: '',
+              businessName: '',
+              phone: '',
+            });
+          }
+
+          // ─────────────────────────────
+          // ADMIN STATUS
+          // ─────────────────────────────
+
+          const savedCode = await AsyncStorage.getItem(ADMIN_CODE_KEY);
+
+          setIsAdminActivated(!!savedCode);
+        } catch (err) {
+          setIsAdminActivated(false);
         }
-      })
-      .catch(() => {});
-  }, []);
+      };
+      loadData();
+    }, []),
+  );
 
   const initials = profile.fullName ? getInitials(profile.fullName) : 'SM';
 
@@ -184,9 +223,70 @@ export default function SettingsScreen({ navigation }) {
     setDeleteModal(true);
   };
 
+  const handleAdminCode = () => {
+    // Check profile completion
+
+    if (!profile?.fullName?.trim()) {
+      toast.error(
+        'Complete Profile & Business details to access Admin settings.',
+      );
+
+      return;
+    }
+
+    setadminCodeModal(true);
+  };
+
+  const confirmAddAdminCode = async () => {
+    try {
+      if (!profile?.fullName?.trim()) {
+        toast.error('Please complete your profile first.');
+
+        return;
+      }
+
+      if (!admincode.trim()) {
+        setErrorText('Please enter admin code');
+
+        return;
+      }
+
+      setActivatingAdmin(true);
+
+      const response = await eventsService.adminCodeCheck(admincode.trim());
+
+      if (!response?.success) {
+        setErrorText(response?.message || 'Invalid admin code');
+        return;
+      }
+
+      // Save locally
+      await AsyncStorage.setItem(ADMIN_CODE_KEY, admincode.trim());
+
+      // Activate
+      setIsAdminActivated(true);
+      // Cleanup
+      setadminCodeModal(false);
+      setadmincode('');
+      setErrorText('');
+
+      toast.success('Admin mode activated');
+    } catch (error) {
+      setadminCodeModal(false);
+      setErrorText('');
+      toast.error(error?.message || 'Failed to activate admin mode.');
+    } finally {
+      setActivatingAdmin(false);
+    }
+  };
+
   const confirmClearData = async () => {
     try {
-      await AsyncStorage.removeItem(PROFILE_KEY);
+      // Remove both profile + admin access
+
+      await AsyncStorage.multiRemove([PROFILE_KEY, ADMIN_CODE_KEY]);
+
+      // Reset profile
 
       setProfile({
         fullName: '',
@@ -194,6 +294,9 @@ export default function SettingsScreen({ navigation }) {
         phone: '',
       });
 
+      // Disable admin mode
+      setIsAdminActivated(false);
+      // Close modal
       setDeleteModal(false);
 
       toast.success('All data has been removed.');
@@ -397,28 +500,54 @@ export default function SettingsScreen({ navigation }) {
         </SettingsSection>
 
         {/* ── Events Section ── */}
-        <SettingsSection title="Manage Events">
+        {isAdminActivated && (
+          <SettingsSection title="Manage Events">
+            <SettingsRow
+              icon={<Calendar1 size={22} color="#B12D4F" />}
+              iconBg="#EFCCB9"
+              label="Today's Events"
+              sublabel="Manage today's events"
+              onPress={() =>
+                navigation.navigate('ManageEvents', {
+                  type: 'today',
+                })
+              }
+            />
+            <SettingsRow
+              icon={<CalendarDays size={22} color="#E68D20" />}
+              iconBg="#F6E6C9"
+              label="All Events"
+              sublabel="Manage all events"
+              onPress={() =>
+                navigation.navigate('ManageEvents', {
+                  type: 'year',
+                })
+              }
+              isLast
+            />
+          </SettingsSection>
+        )}
+
+        <SettingsSection title="Admin">
           <SettingsRow
-            icon={<Calendar1 size={22} color="#B12D4F" />}
-            iconBg="#EFCCB9"
-            label="Today's Events"
-            sublabel="Manage today's events"
-            onPress={() =>
-              navigation.navigate('ManageEvents', {
-                type: 'today',
-              })
+            icon={
+              <UserKey
+                size={22}
+                color={isAdminActivated ? '#10B981' : '#E68D20'}
+              />
             }
-          />
-          <SettingsRow
-            icon={<CalendarDays size={22} color="#E68D20" />}
-            iconBg="#F6E6C9"
-            label="All Events"
-            sublabel="Manage all events"
-            onPress={() =>
-              navigation.navigate('ManageEvents', {
-                type: 'year',
-              })
+            iconBg={
+              isAdminActivated
+                ? 'rgba(16,185,129,0.12)'
+                : 'rgba(230,141,32,0.14)'
             }
+            label="Admin Code"
+            sublabel={
+              isAdminActivated
+                ? 'Admin mode activated'
+                : 'Add admin code to manage events'
+            }
+            onPress={handleAdminCode}
             isLast
           />
         </SettingsSection>
@@ -445,7 +574,7 @@ export default function SettingsScreen({ navigation }) {
             label="About"
             sublabel="Version 1.0.0"
             onPress={() =>
-              toast.info('Poster Maker v1.0.0\nMade with ❤️ in India')
+              toast.info('ShubhaM.Ai v1.0.0\nMade with ❤️ in India')
             }
             isLast
           />
@@ -607,6 +736,186 @@ export default function SettingsScreen({ navigation }) {
                   }}
                 >
                   Clear
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        isVisible={adminCodeModal}
+        onBackdropPress={() => {
+          setadminCodeModal(false);
+          setadmincode('');
+          setErrorText('');
+        }}
+        onBackButtonPress={() => {
+          setadminCodeModal(false);
+          setadmincode('');
+          setErrorText('');
+        }}
+        backdropOpacity={0.45}
+        style={{
+          margin: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: scale(24),
+        }}
+      >
+        <View
+          style={{
+            width: '100%',
+            backgroundColor: '#FFFFFF',
+            borderRadius: scale(28),
+            padding: scale(24),
+            alignItems: 'center',
+
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.15,
+            shadowRadius: 24,
+
+            elevation: 20,
+          }}
+        >
+          {/* Icon */}
+          <LinearGradient
+            colors={['rgba(239,68,68,0.15)', 'rgba(220,38,38,0.08)']}
+            style={{
+              width: scale(72),
+              height: scale(72),
+              borderRadius: scale(36),
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: scale(18),
+            }}
+          >
+            <UserKey size={32} color="#EF4444" strokeWidth={2.3} />
+          </LinearGradient>
+
+          {/* Title */}
+          <Text
+            style={{
+              fontSize: moderateScale(20),
+              fontFamily: 'Inter-Bold',
+              color: '#111827',
+              marginBottom: scale(8),
+            }}
+          >
+            Admin Code
+          </Text>
+
+          {/* Description */}
+          <Text
+            style={{
+              fontSize: moderateScale(13),
+              fontFamily: 'Inter-Regular',
+              color: '#6B7280',
+              textAlign: 'center',
+              lineHeight: 22,
+              marginBottom: scale(24),
+            }}
+          >
+            Please enter the admin access code to manage event settings and
+            controls.
+          </Text>
+
+          <View
+            style={{
+              width: '100%',
+              marginVertical: scale(6),
+            }}
+          >
+            <InputField
+              placeholder="Activation code"
+              value={admincode}
+              onChangeText={text => {
+                setadmincode(text);
+                if (errorText) {
+                  setErrorText('');
+                }
+              }}
+              icon={<Lock size={22} color="#0D47A1" />}
+            />
+            {errorText ? (
+              <Text
+                style={{
+                  color: '#EF4444',
+                  fontSize: moderateScale(12),
+                  fontFamily: 'Inter-Regular',
+                  paddingHorizontal: scale(6),
+                }}
+              >
+                * {errorText}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Buttons */}
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: scale(10),
+              width: '100%',
+            }}
+          >
+            {/* Cancel */}
+            <TouchableOpacity
+              onPress={() => {
+                setadminCodeModal(false);
+                setadmincode('');
+                setErrorText('');
+              }}
+              activeOpacity={0.85}
+              style={{
+                flex: 1,
+                height: scale(52),
+                borderRadius: scale(16),
+                backgroundColor: '#F3F4F6',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text
+                style={{
+                  color: '#6B7280',
+                  fontSize: moderateScale(14),
+                  fontFamily: 'Inter-SemiBold',
+                }}
+              >
+                Cancel
+              </Text>
+            </TouchableOpacity>
+
+            {/* Clear */}
+            <TouchableOpacity
+              onPress={confirmAddAdminCode}
+              disabled={activatingAdmin}
+              activeOpacity={0.9}
+              style={{
+                flex: 1,
+                borderRadius: scale(16),
+                overflow: 'hidden',
+              }}
+            >
+              <LinearGradient
+                colors={['#00C853', '#B2FF59']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  height: scale(52),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: moderateScale(14),
+                    fontFamily: 'Inter-Bold',
+                  }}
+                >
+                  {activatingAdmin ? 'Activating...' : 'Activate'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
