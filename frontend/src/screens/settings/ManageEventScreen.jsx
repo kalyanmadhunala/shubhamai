@@ -254,9 +254,6 @@ export default function ManageEventScreen({ route }) {
     }
   };
 
-  // ─────────────────────────────
-  // LOADER
-  // ─────────────────────────────
   if (!isAuthorized) {
     return (
       <View
@@ -280,6 +277,11 @@ export default function ManageEventScreen({ route }) {
     );
   }
 
+  // ─────────────────────────────
+  // LOADER
+  // ─────────────────────────────
+
+  
   if (loading) {
     return <Loader message="Loading events..." />;
   }
