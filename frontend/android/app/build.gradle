@@ -82,8 +82,8 @@ android {
         applicationId "com.shubhamai"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 10
+        versionName "2.4.3"
     }
     signingConfigs {
     release {
@@ -104,6 +104,11 @@ android {
         signingConfig signingConfigs.release
         minifyEnabled false
         shrinkResources false
+    }
+}
+applicationVariants.all { variant ->
+    variant.outputs.all {
+        outputFileName ="ShubhaMAi.apk"
     }
 }
 }
