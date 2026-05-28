@@ -5,6 +5,9 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  Image,
+  Linking,
+  Alert,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
@@ -13,6 +16,7 @@ import {
   TextInput,
   useWindowDimensions,
 } from 'react-native';
+import ImagePicker from 'react-native-image-crop-picker';
 import {
   ChevronRight,
   Sparkles,
@@ -23,6 +27,8 @@ import {
   Building2,
   CircleUserRound,
   Info,
+  X,
+  ImageUp,
 } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -164,15 +170,35 @@ export default function CustomPosterGenerationScreen({ navigation }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [personName, setPersonName] = useState('');
-  const [selectedChip, setSelectedChip] = useState('Happy Birthday');
-  const [description, setDescription] = useState('🎂 Happy Birthday');
+  const [description, setDescription] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [wisherName, setWisherName] = useState('');
   const [errors, setErrors] = useState({});
+  const [customImage, setCustomImage] = useState(null);
 
   // ─────────────────────────────────────────
   // Load Profile
   // ─────────────────────────────────────────
+  const pickCustomImage = async () => {
+    try {
+      const image = await ImagePicker.openPicker({
+        mediaType: 'photo',
+        cropping: false,
+        compressImageQuality: 1,
+      });
+
+      // Use ORIGINAL TEMP PATH
+      // No copy
+      // No permanent storage
+      setCustomImage(
+        image.path.startsWith('file://') ? image.path : `file://${image.path}`,
+      );
+
+      toast.success('Image selected successfully ✨');
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   useEffect(() => {
     AsyncStorage.getItem(PROFILE_KEY)
@@ -217,12 +243,10 @@ export default function CustomPosterGenerationScreen({ navigation }) {
 
       customParams: {
         personName: personName.trim(),
-
         description: description.trim(),
-
         businessName: businessName.trim(),
-
         wisherName: wisherName.trim(),
+        customImage,
       },
     });
   };
@@ -350,7 +374,6 @@ export default function CustomPosterGenerationScreen({ navigation }) {
 
           <View style={{ width: scale(32) }} />
         </View>
-
         {/* Stepper */}
 
         <StepIndicator currentStep={1} />
@@ -434,7 +457,7 @@ export default function CustomPosterGenerationScreen({ navigation }) {
                     personName: '',
                   }));
                 }}
-                placeholder="Dandi Harish Kumar"
+                placeholder="Prachaitan Madhunala"
                 placeholderTextColor="#BBBBBB"
                 style={{
                   flex: 1,
@@ -486,112 +509,6 @@ export default function CustomPosterGenerationScreen({ navigation }) {
               Occasion <Text style={{ color: 'red' }}>*</Text>
             </Text>
 
-            {/* Chips */}
-
-            <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: scale(8),
-                marginBottom: scale(14),
-              }}
-            >
-              {OCCASION_CHIPS.map(chip => {
-                const isSelected = selectedChip === chip.label;
-
-                return isSelected ? (
-                  <TouchableOpacity
-                    key={chip.label}
-                    onPress={() => {
-                      setSelectedChip(chip.label);
-
-                      setDescription(`${chip.emoji} ${chip.label}`);
-                    }}
-                    activeOpacity={0.85}
-                    style={{
-                      borderRadius: moderateScale(20),
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <LinearGradient
-                      colors={GRADIENTS.primary}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingHorizontal: scale(12),
-                        paddingVertical: scale(7),
-                        gap: scale(5),
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: scale(13),
-                        }}
-                      >
-                        {chip.emoji}
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: '#fff',
-                          fontSize: moderateScale(12),
-                          fontFamily: 'Inter-SemiBold',
-                        }}
-                      >
-                        {chip.label}
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    key={chip.label}
-                    onPress={() => {
-                      setSelectedChip(chip.label);
-
-                      setDescription(`${chip.emoji} ${chip.label}`);
-
-                      setErrors(p => ({
-                        ...p,
-                        description: '',
-                      }));
-                    }}
-                    activeOpacity={0.8}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingHorizontal: scale(12),
-                      paddingVertical: scale(7),
-                      borderRadius: moderateScale(20),
-                      borderWidth: 1,
-                      borderColor: '#E0E0E0',
-                      backgroundColor: '#FAFAFA',
-                      gap: scale(5),
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: scale(13),
-                      }}
-                    >
-                      {chip.emoji}
-                    </Text>
-
-                    <Text
-                      style={{
-                        fontSize: moderateScale(12),
-                        fontFamily: 'Inter-SemiBold',
-                        color: '#666',
-                      }}
-                    >
-                      {chip.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
             {/* Description */}
 
             <Text
@@ -602,7 +519,7 @@ export default function CustomPosterGenerationScreen({ navigation }) {
                 marginBottom: scale(6),
               }}
             >
-              Description / Occasion <Text style={{ color: 'red' }}>*</Text>
+              Description / Wishes <Text style={{ color: 'red' }}>*</Text>
             </Text>
 
             <View
@@ -651,6 +568,243 @@ export default function CustomPosterGenerationScreen({ navigation }) {
                 {errors.description}
               </Text>
             ) : null}
+          </View>
+          {/* Custom Image */}
+
+          <View
+            style={{
+              backgroundColor: '#FFFFFF',
+
+              borderRadius: moderateScale(16),
+
+              padding: scale(16),
+
+              marginBottom: scale(16),
+
+              shadowColor: '#000',
+
+              shadowOffset: {
+                width: 0,
+                height: 1,
+              },
+
+              shadowOpacity: 0.05,
+
+              shadowRadius: 6,
+
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: scale(12),
+              }}
+            >
+              <View>
+                <Text
+                  style={{
+                    fontSize: moderateScale(13),
+                    fontFamily: 'Inter-Bold',
+                    color: '#1A1A2E',
+                  }}
+                >
+                  Poster Image
+                </Text>
+
+                <Text
+                  style={{
+                    fontSize: moderateScale(10),
+
+                    color: '#777',
+
+                    fontFamily: 'Inter-Regular',
+
+                    marginTop: scale(2),
+                  }}
+                >
+                  Optional custom image for AI poster
+                </Text>
+              </View>
+
+              <Info size={18} color="#2563EB" />
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => {
+                if (!customImage) {
+                  pickCustomImage();
+                }
+              }}
+              style={{
+                borderWidth: 1.5,
+                borderStyle: 'dashed',
+                borderColor: customImage ? '#10B981' : '#D1D5DB',
+                borderRadius: moderateScale(16),
+                overflow: 'hidden',
+                backgroundColor: customImage ? '#F3F4F6' : '#FAFAFA',
+                height: verticalScale(180),
+              }}
+            >
+              {customImage ? (
+                <View>
+                  {/* Full Preview Image */}
+
+                  <Image
+                    source={{
+                      uri: customImage,
+                    }}
+                    resizeMode="cover"
+                    style={{
+                      width: '100%',
+                      height: verticalScale(180),
+                    }}
+                  />
+
+                  {/* Overlay */}
+
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.75)']}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      paddingHorizontal: scale(16),
+                      paddingVertical: verticalScale(16),
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: '#FFFFFF',
+                        fontSize: moderateScale(14),
+                        fontFamily: 'Inter-Bold',
+                      }}
+                    >
+                      Image Selected ✓
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: 'rgba(255,255,255,0.8)',
+                        fontSize: moderateScale(11),
+                        marginTop: scale(4),
+                        fontFamily: 'Inter-Regular',
+                      }}
+                    >
+                      This image will be shared to AI apps
+                    </Text>
+                  </LinearGradient>
+
+                  {/* Top Buttons */}
+
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: scale(12),
+                      right: scale(12),
+                      flexDirection: 'row',
+                      gap: scale(8),
+                    }}
+                  >
+                    {/* Change */}
+
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={pickCustomImage}
+                      style={{
+                        backgroundColor: 'rgba(0,0,0,0.65)',
+                        paddingHorizontal: scale(14),
+                        paddingVertical: verticalScale(12),
+                        borderRadius: moderateScale(30),
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: '#FFFFFF',
+                          fontSize: moderateScale(11),
+                          fontFamily: 'Inter-Bold',
+                        }}
+                      >
+                        Change
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Remove */}
+
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setCustomImage(null);
+
+                        toast.success('Image removed');
+                      }}
+                      style={{
+                        width: scale(36),
+                        height: scale(36),
+                        borderRadius: scale(18),
+                        backgroundColor: 'rgba(239,68,68,0.92)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: '#FFFFFF',
+                          fontSize: moderateScale(16),
+                          fontFamily: 'Inter-Bold',
+                        }}
+                      >
+                        <X color="#FFFFFF"/>
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View
+                  style={{
+                    paddingVertical: verticalScale(38),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: moderateScale(42),
+                    }}
+                  >
+                    <ImageUp size={42} color="#00BCD4" />
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: '#1A1A2E',
+                      fontSize: moderateScale(14),
+                      fontFamily: 'Inter-Bold',
+                      marginTop: scale(10),
+                    }}
+                  >
+                    Upload Image
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: '#777',
+                      fontSize: moderateScale(11),
+                      marginTop: scale(5),
+                      fontFamily: 'Inter-Regular',
+                      textAlign: 'center',
+                      paddingHorizontal: scale(20),
+                    }}
+                  >
+                    Upload a image to share directly with AI apps
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
           <View
             style={{

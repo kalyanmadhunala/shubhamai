@@ -2,14 +2,18 @@
 // UI updated to match design spec — "My Profile" header, avatar with initials,
 // personal account badge, info rows for Business Name, Phone, Address, info note.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRoute } from '@react-navigation/native';
 import { ROUTES } from '../../navigation/routes';
 import {
   View,
   Text,
+  Image,
+  Keyboard,
+  TextInput,
   TouchableOpacity,
-  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
   Alert,
   StatusBar,
   useWindowDimensions,
@@ -21,6 +25,7 @@ import {
   Trash2,
   Phone,
   MapPin,
+  Camera,
   Star,
   Share2,
   Info,
@@ -29,12 +34,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { COLORS, GRADIENTS } from '../../constants/colors';
+import { useFocusEffect } from '@react-navigation/native';
 import { scale, verticalScale, moderateScale } from '../../utils/responsive';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import InputField from '../../components/common/InputField';
 import PrimaryButton from '../../components/common/PrimaryButton';
 import SecondaryButton from '../../components/common/SecondaryButton';
 import { PROFILE_KEY } from '../main/HomeScreen';
 import { toast, Toaster } from 'sonner-native';
+import {
+  getProfileImage,
+  pickProfileImage,
+  saveProfileImage,
+} from '../../utils/profileImage';
 
 // Helper: get initials from full name
 function getInitials(name = '') {
@@ -61,6 +73,11 @@ export default function ProfileScreen({ navigation }) {
     businessAddress: '',
   });
   const [saving, setSaving] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
+  const [tempImage, setTempImage] = useState('');
+  const businessNameRef = useRef(null);
+  const phoneRef = useRef(null);
+  const addressRef = useRef(null);
 
   const editMode = route?.params?.editMode || false;
 
@@ -82,6 +99,20 @@ export default function ProfileScreen({ navigation }) {
       }
     }
   }, [isToast]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadImage = async () => {
+        const savedImage = await getProfileImage();
+
+        if (savedImage) {
+          setSelectedImage(savedImage);
+        }
+      };
+
+      loadImage();
+    }, []),
+  );
 
   useEffect(() => {
     AsyncStorage.getItem(PROFILE_KEY)
@@ -124,6 +155,18 @@ export default function ProfileScreen({ navigation }) {
         businessAddress: form.businessAddress.trim(),
       };
       await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
+      let finalSavedImage = selectedImage;
+
+      // Save image permanently only on Save
+      if (tempImage) {
+        const savedImage = await saveProfileImage(tempImage);
+
+        if (savedImage) {
+          finalSavedImage = savedImage;
+
+          setSelectedImage(savedImage);
+        }
+      }
       setProfile({
         fullName: updated.fullName,
         businessName: updated.businessName,
@@ -146,6 +189,18 @@ export default function ProfileScreen({ navigation }) {
       toast.error('Error', 'Could not save. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const pickImage = async () => {
+    const imagePath = await pickProfileImage();
+
+    if (imagePath) {
+      // Temporary preview only
+      setTempImage(imagePath);
+
+      // Show instantly in UI
+      setSelectedImage(imagePath);
     }
   };
 
@@ -265,165 +320,261 @@ export default function ProfileScreen({ navigation }) {
         )}
       </View>
 
-      <ScrollView
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: scale(16),
-          paddingBottom: verticalScale(100),
-        }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {editing ? (
-          /* ── Edit Mode ── */
-          <View
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: moderateScale(20),
-              padding: scale(20),
-              marginTop: verticalScale(8),
-              shadowColor: '#000',
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-            }}
-          >
-            <Text
-              style={{
-                color: '#1A1A2E',
-                fontSize: moderateScale(16),
-                fontFamily: 'Inter-Bold',
-                marginBottom: scale(16),
-              }}
-            >
-              Edit Profile
-            </Text>
-            <InputField
-              label="Full Name"
-              placeholder="e.g. Ravinder Madhunala"
-              value={form.fullName}
-              onChangeText={t => setForm(p => ({ ...p, fullName: t }))}
-              icon={<User size={22} color="#0D47A1" />}
-            />
-            <InputField
-              label="Business Name"
-              placeholder="e.g. Shri Manjunatha Marble & Granites"
-              value={form.businessName}
-              onChangeText={t => setForm(p => ({ ...p, businessName: t }))}
-              icon={<Building2 size={22} color="#0D47A1" />}
-            />
-            <InputField
-              label="Phone Number"
-              placeholder="10-digit phone"
-              value={form.phone}
-              onChangeText={t => setForm(p => ({ ...p, phone: t }))}
-              keyboardType="phone-pad"
-              icon={<Phone size={22} color="#0D47A1" />}
-            />
-            <InputField
-              label="Business Address"
-              placeholder="Enter your business address"
-              value={form.businessAddress}
-              onChangeText={t => setForm(p => ({ ...p, businessAddress: t }))}
-              icon={<MapPin size={22} color="#0D47A1" />}
-            />
-            <View
-              className="flex flex-row gap-5 justify-center items-center"
-              style={{ marginTop: scale(8) }}
-            >
-              <PrimaryButton
-                title="Save"
-                onPress={handleSave}
-                loading={saving}
-                style={{ width: 140 }}
-              />
-              <SecondaryButton
-                title="Cancel"
-                onPress={() => setEditing(false)}
-                style={{ width: 140 }}
-              />
-            </View>
-          </View>
-        ) : (
-          <>
-            {/* ── Avatar + Name Card ── */}
+        <KeyboardAwareScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          enableOnAndroid
+          extraHeight={140}
+          contentContainerStyle={{
+            paddingHorizontal: scale(16),
+            paddingBottom: verticalScale(100),
+          }}
+        >
+          {editing ? (
+            /* ── Edit Mode ── */
             <View
               style={{
                 backgroundColor: '#fff',
                 borderRadius: moderateScale(20),
-                paddingVertical: verticalScale(20),
-                paddingHorizontal: scale(20),
+                padding: scale(20),
                 marginTop: verticalScale(8),
-                marginBottom: verticalScale(14),
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: scale(16),
                 shadowColor: '#000',
-                shadowOpacity: 0.05,
-                shadowRadius: 10,
-                elevation: 2,
+                shadowOpacity: 0.06,
+                shadowRadius: 12,
               }}
             >
-              {/* Avatar Circle */}
-              <LinearGradient
-                colors={['#1565C0', '#00BCD4']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+              <Text
                 style={{
-                  width: scale(54),
-                  height: scale(54),
-                  borderRadius: scale(27),
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  color: '#1A1A2E',
+                  fontSize: moderateScale(16),
+                  fontFamily: 'Inter-Bold',
+                  marginBottom: scale(16),
                 }}
               >
-                <Text
-                  style={{
-                    color: '#fff',
-                    fontSize: moderateScale(20),
-                    fontFamily: 'Inter-Bold',
-                  }}
-                >
-                  {initials}
-                </Text>
-              </LinearGradient>
+                Edit Profile
+              </Text>
+              {/* ── Profile Image Upload ── */}
 
-              {/* Name + Account Type */}
-              <View style={{ flex: 1 }}>
-                <Text
+              <View
+                style={{
+                  alignItems: 'center',
+                  marginBottom: verticalScale(22),
+                }}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={pickImage}
                   style={{
-                    color: '#1A1A2E',
-                    fontSize: moderateScale(16),
-                    fontFamily: 'Inter-Bold',
+                    width: scale(110),
+                    height: scale(110),
+                    borderRadius: scale(55),
+                    overflow: 'hidden',
+                    backgroundColor: '#EEF4FF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
                   }}
                 >
-                  {profile.fullName || 'Your Name'}
-                </Text>
+                  {selectedImage ? (
+                    <Image
+                      source={{ uri: selectedImage }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                      }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#1565C0', '#00BCD4']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: '#FFFFFF',
+                          fontSize: moderateScale(34),
+                          fontFamily: 'Inter-Bold',
+                        }}
+                      >
+                        {initials}
+                      </Text>
+                    </LinearGradient>
+                  )}
+
+                  {/* Camera Button */}
+                </TouchableOpacity>
                 <View
                   style={{
-                    flexDirection: 'row',
+                    position: 'absolute',
+                    bottom: scale(24),
+                    right: scale(94),
+                    width: scale(34),
+                    height: scale(34),
+                    borderRadius: scale(17),
+                    backgroundColor: '#00BCD4',
                     alignItems: 'center',
-                    gap: scale(5),
-                    marginTop: 3,
+                    justifyContent: 'center',
+                    borderWidth: 3,
+                    borderColor: '#FFFFFF',
                   }}
                 >
-                  <Text
-                    style={{
-                      color: '#6B7A8D',
-                      fontSize: moderateScale(12),
-                      fontFamily: 'Inter-Regular',
-                    }}
-                  >
-                    {initials === 'SM'
-                      ? 'Create your personal account'
-                      : 'Personal Account'}
-                  </Text>
-                  {/* Verified Badge */}
-                  {initials !== 'SM' && (
-                    <View
+                  <Camera size={16} color="#FFFFFF" strokeWidth={2.5} />
+                </View>
+                <Text
+                  style={{
+                    marginTop: verticalScale(10),
+                    color: '#6B7280',
+                    fontSize: moderateScale(12),
+                    fontFamily: 'Inter-Medium',
+                  }}
+                >
+                  Upload Profile Photo
+                </Text>
+              </View>
+              <InputField
+                placeholder="Full Name"
+                value={form.fullName}
+                onChangeText={t =>
+                  setForm(p => ({
+                    ...p,
+                    fullName: t,
+                  }))
+                }
+                icon={<User size={22} color="#0D47A1" />}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => businessNameRef.current?.focus()}
+              />
+              <InputField
+                ref={businessNameRef}
+                placeholder="Business Name"
+                value={form.businessName}
+                onChangeText={t =>
+                  setForm(p => ({
+                    ...p,
+                    businessName: t,
+                  }))
+                }
+                icon={<Building2 size={22} color="#0D47A1" />}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => phoneRef.current?.focus()}
+              />
+              <InputField
+                ref={phoneRef}
+                placeholder="Phone Number"
+                value={form.phone}
+                onChangeText={t =>
+                  setForm(p => ({
+                    ...p,
+                    phone: t,
+                  }))
+                }
+                keyboardType="phone-pad"
+                icon={<Phone size={22} color="#0D47A1" />}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => addressRef.current?.focus()}
+              />
+              <InputField
+                ref={addressRef}
+                placeholder="Business Address"
+                value={form.businessAddress}
+                onChangeText={t =>
+                  setForm(p => ({
+                    ...p,
+                    businessAddress: t,
+                  }))
+                }
+                icon={<MapPin size={22} color="#0D47A1" />}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  Keyboard.dismiss();
+                }}
+              />
+              <View
+                className="flex flex-row gap-5 justify-center items-center"
+                style={{ marginTop: scale(8) }}
+              >
+                <PrimaryButton
+                  title="Save"
+                  onPress={handleSave}
+                  loading={saving}
+                  style={{ width: 140 }}
+                />
+                <SecondaryButton
+                  title="Cancel"
+                  onPress={async () => {
+                    const originalImage = await getProfileImage();
+                    setSelectedImage(originalImage || '');
+                    setTempImage('');
+                    setEditing(false);
+                  }}
+                  style={{ width: 140 }}
+                />
+              </View>
+            </View>
+          ) : (
+            <>
+              {/* ── Avatar + Name Card ── */}
+              <View
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: moderateScale(20),
+                  paddingVertical: verticalScale(20),
+                  paddingHorizontal: scale(20),
+                  marginTop: verticalScale(8),
+                  marginBottom: verticalScale(14),
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: scale(16),
+                  shadowColor: '#000',
+                  shadowOpacity: 0.05,
+                  shadowRadius: 10,
+                  elevation: 2,
+                }}
+              >
+                {/* Avatar Circle */}
+                <View
+                  style={{
+                    width: scale(54),
+                    height: scale(54),
+                    borderRadius: scale(27),
+                    overflow: 'hidden',
+                    backgroundColor: '#E3F2FD',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {selectedImage ? (
+                    <Image
+                      source={{ uri: selectedImage }}
                       style={{
-                        width: scale(16),
-                        height: scale(16),
-                        borderRadius: scale(8),
-                        backgroundColor: '#00BCD4',
+                        width: '100%',
+                        height: '100%',
+                      }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#1565C0', '#00BCD4']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
@@ -431,126 +582,182 @@ export default function ProfileScreen({ navigation }) {
                       <Text
                         style={{
                           color: '#fff',
-                          fontSize: moderateScale(9),
+                          fontSize: moderateScale(20),
                           fontFamily: 'Inter-Bold',
                         }}
                       >
-                        ✓
+                        {initials}
                       </Text>
-                    </View>
+                    </LinearGradient>
                   )}
                 </View>
-              </View>
-            </View>
 
-            {/* ── Info Rows Card ── */}
-            <View
-              style={{
-                backgroundColor: '#fff',
-                borderRadius: moderateScale(20),
-                paddingVertical: verticalScale(4),
-                paddingHorizontal: scale(16),
-                shadowColor: '#000',
-                shadowOpacity: 0.05,
-                shadowRadius: 10,
-                elevation: 2,
-                marginBottom: verticalScale(14),
-              }}
-            >
-              {[
-                {
-                  label: 'Business Name',
-                  value: profile.businessName || 'Your Business Name',
-                  iconBg: '#E3F2FD',
-                  icon: <Building2 size={22} color="#0D47A1" />,
-                },
-                {
-                  label: 'Phone Number',
-                  value: profile.phone || 'Your Phone Number',
-                  iconBg: '#E8F5E9',
-                  icon: <Phone size={22} color="#0A8114" />,
-                },
-                {
-                  label: 'Business Address',
-                  value: profile.businessAddress || 'Your Business Address',
-                  iconBg: '#FFF3E0',
-                  icon: <MapPin size={22} color="#E69513" />,
-                  isLast: true,
-                },
-              ].map(row => (
-                <View
-                  key={row.label}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'flex-start',
-                    paddingVertical: verticalScale(14),
-                    borderBottomWidth: row.isLast ? 0 : 1,
-                    borderBottomColor: '#F0F0F5',
-                    gap: scale(14),
-                  }}
-                >
-                  {/* Icon Circle */}
-                  <View
+                {/* Name + Account Type */}
+                <View style={{ flex: 1 }}>
+                  <Text
                     style={{
-                      width: scale(40),
-                      height: scale(40),
-                      borderRadius: scale(20),
-                      backgroundColor: row.iconBg,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginTop: verticalScale(2),
+                      color: '#1A1A2E',
+                      fontSize: moderateScale(16),
+                      fontFamily: 'Inter-Bold',
                     }}
                   >
-                    <Text style={{ fontSize: scale(18) }}>{row.icon}</Text>
-                  </View>
-
-                  {/* Label + Value */}
-                  <View style={{ flex: 1 }}>
+                    {profile.fullName || 'Your Name'}
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: scale(5),
+                      marginTop: 3,
+                    }}
+                  >
                     <Text
                       style={{
-                        color: '#9E9E9E',
-                        fontSize: moderateScale(11),
+                        color: '#6B7A8D',
+                        fontSize: moderateScale(12),
                         fontFamily: 'Inter-Regular',
-                        marginBottom: 3,
                       }}
                     >
-                      {row.label}
+                      {initials === 'SM'
+                        ? 'Create your personal account'
+                        : 'Personal Account'}
                     </Text>
-                    <Text
-                      style={{
-                        color: '#1A1A2E',
-                        fontSize: moderateScale(14),
-                        fontFamily: 'Inter-SemiBold',
-                      }}
-                    >
-                      {row.value}
-                    </Text>
+                    {/* Verified Badge */}
+                    {initials !== 'SM' && (
+                      <View
+                        style={{
+                          width: scale(16),
+                          height: scale(16),
+                          borderRadius: scale(8),
+                          backgroundColor: '#00BCD4',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: '#fff',
+                            fontSize: moderateScale(9),
+                            fontFamily: 'Inter-Bold',
+                          }}
+                        >
+                          ✓
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </View>
-              ))}
-            </View>
+              </View>
 
-            {/* ── Info Note ── */}
-            <View
-              style={{
-                backgroundColor: '#EDF6FB',
-              }}
-              className="mx-2 mt-2 bg-cyan-50 rounded-[18px] p-4 flex-row items-center justify-center gap-2"
-            >
-              <Info size={22} color="#2EACF1" />
-              <Text
-                className="flex-1 text-[11px] text-gray-600 leading-[18px]"
+              {/* ── Info Rows Card ── */}
+              <View
                 style={{
-                  fontFamily: 'Inter-Regular',
+                  backgroundColor: '#fff',
+                  borderRadius: moderateScale(20),
+                  paddingVertical: verticalScale(4),
+                  paddingHorizontal: scale(16),
+                  shadowColor: '#000',
+                  shadowOpacity: 0.05,
+                  shadowRadius: 10,
+                  elevation: 2,
+                  marginBottom: verticalScale(14),
                 }}
               >
-                Your profile is saved on this device only. Business name and
-                your name will be auto-filled in poster prompts.
-              </Text>
-            </View>
-          </>
-        )}
-      </ScrollView>
+                {[
+                  {
+                    label: 'Business Name',
+                    value: profile.businessName || 'Your Business Name',
+                    iconBg: '#E3F2FD',
+                    icon: <Building2 size={22} color="#0D47A1" />,
+                  },
+                  {
+                    label: 'Phone Number',
+                    value: profile.phone || 'Your Phone Number',
+                    iconBg: '#E8F5E9',
+                    icon: <Phone size={22} color="#0A8114" />,
+                  },
+                  {
+                    label: 'Business Address',
+                    value: profile.businessAddress || 'Your Business Address',
+                    iconBg: '#FFF3E0',
+                    icon: <MapPin size={22} color="#E69513" />,
+                    isLast: true,
+                  },
+                ].map(row => (
+                  <View
+                    key={row.label}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      paddingVertical: verticalScale(14),
+                      borderBottomWidth: row.isLast ? 0 : 1,
+                      borderBottomColor: '#F0F0F5',
+                      gap: scale(14),
+                    }}
+                  >
+                    {/* Icon Circle */}
+                    <View
+                      style={{
+                        width: scale(40),
+                        height: scale(40),
+                        borderRadius: scale(20),
+                        backgroundColor: row.iconBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: verticalScale(2),
+                      }}
+                    >
+                      <Text style={{ fontSize: scale(18) }}>{row.icon}</Text>
+                    </View>
+
+                    {/* Label + Value */}
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          color: '#9E9E9E',
+                          fontSize: moderateScale(11),
+                          fontFamily: 'Inter-Regular',
+                          marginBottom: 3,
+                        }}
+                      >
+                        {row.label}
+                      </Text>
+                      <Text
+                        style={{
+                          color: '#1A1A2E',
+                          fontSize: moderateScale(14),
+                          fontFamily: 'Inter-SemiBold',
+                        }}
+                      >
+                        {row.value}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {/* ── Info Note ── */}
+              <View
+                style={{
+                  backgroundColor: '#EDF6FB',
+                }}
+                className="mx-2 mt-2 bg-cyan-50 rounded-[18px] p-4 flex-row items-center justify-center gap-2"
+              >
+                <Info size={22} color="#2EACF1" />
+                <Text
+                  className="flex-1 text-[11px] text-gray-600 leading-[18px]"
+                  style={{
+                    fontFamily: 'Inter-Regular',
+                  }}
+                >
+                  Your profile is saved on this device only. Business name and
+                  your name will be auto-filled in poster prompts.
+                </Text>
+              </View>
+            </>
+          )}
+        </KeyboardAwareScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -7,10 +7,10 @@ import {
   StatusBar,
   TouchableOpacity,
   ScrollView,
-  Clipboard,
   Linking,
   Share,
   Animated,
+  Platform,
   Alert,
   useWindowDimensions,
   Image,
@@ -32,8 +32,10 @@ import {
   Phone,
   Languages,
   Paperclip,
+  ImageIcon,
 } from 'lucide-react-native';
-
+import { NativeModules } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,7 +44,11 @@ import { scale, verticalScale, moderateScale } from '../../utils/responsive';
 import BackButton from '../../components/common/BackButton';
 import { PROFILE_KEY } from './HomeScreen';
 import { toast, Toaster } from 'sonner-native';
+import RNShare from 'react-native-share';
+import { getProfileImage } from '../../utils/profileImage';
+import RNFS from 'react-native-fs';
 
+const { ShareToAI } = NativeModules;
 // ─────────────────────────────────────────────────────────────
 // Prompt Builder
 // ─────────────────────────────────────────────────────────────
@@ -57,7 +63,6 @@ function buildEventPrompt({ event, profile, promptOptions }) {
   const promptHint = event?.promptHint || '';
   const category = event?.category || '';
   const emoji = event?.emoji || '🎉';
-
   return `Create a PREMIUM HIGH-QUALITY SOCIAL MEDIA POSTER for "${eventName}" ${emoji}.
 
 ━━━━━━━━━━━━━━━━━━
@@ -524,9 +529,7 @@ The poster should intelligently choose between:
 
 according to the event mood and occasion.
 
-Generate a MASTERPIECE-LEVEL EVENT POSTER with premium balanced Indian social media aesthetics.
-
-`;
+Generate a MASTERPIECE-LEVEL EVENT POSTER with premium balanced Indian social media aesthetics.`;
 }
 
 function buildCustomPrompt({ customParams, profile, promptOptions }) {
@@ -536,18 +539,14 @@ function buildCustomPrompt({ customParams, profile, promptOptions }) {
     businessName: bName,
     wisherName: wName,
   } = customParams;
-
   const businessName = bName || profile?.businessName || 'Our Business';
-
   const wisherName = wName || profile?.fullName || 'Our Team';
-
   const businessAddress = profile?.businessAddress || 'Karimnagar';
-
   const phoneNumber = profile?.phone || '9440159683';
 
-  return `
+  return `Create a PREMIUM HIGH-QUALITY CUSTOM SOCIAL MEDIA POSTER based on the following custom event or occasion:
 
-Create a PREMIUM HIGH-QUALITY CUSTOM SOCIAL MEDIA POSTER for "${description}".
+"${description}"
 
 ━━━━━━━━━━━━━━━━━━
 🎨 DESIGN DIRECTION
@@ -556,97 +555,181 @@ Create a PREMIUM HIGH-QUALITY CUSTOM SOCIAL MEDIA POSTER for "${description}".
 The poster must look professionally designed by an expert Indian social media poster designer.
 
 IMPORTANT:
-The entire design style should automatically adapt according to the occasion.
+The entire poster design, visual mood, composition, typography, decorations, atmosphere, lighting, colors, and layout MUST be intelligently generated according to the custom event description.
+
+The AI must deeply understand the meaning, emotion, importance, and context of the custom description and generate visuals specifically matching that event.
+
+DO NOT assume every poster is birthday-style or greeting-style.
+
+The poster style must dynamically adapt according to the custom event.
 
 Examples:
-- Birthday → vibrant, modern, fun, colorful
-- Wedding Anniversary → elegant, romantic, luxury
-- Congratulations → stylish, achievement-focused, premium
-- Best Wishes → minimal, emotional, clean
-- Emotional wishes → soft cinematic mood
-- Professional wishes → modern clean layout
 
-The design should intelligently choose:
-- luxury OR minimal
-- decorative OR clean
-- modern OR traditional
-- vibrant OR elegant
-according to the occasion naturally.
+- Birthday → vibrant celebration aesthetics
+- Wedding Anniversary → romantic luxury visuals
+- Congratulations → achievement-focused premium style
+- Political Event → powerful public-event composition
+- Business Opening → grand professional launch visuals
+- Memorial Tribute → emotional respectful atmosphere
+- Temple Event → spiritual devotional aesthetics
+- Farewell Event → emotional cinematic mood
+- Cultural Program → traditional artistic visuals
+- Motivation Quote → minimal inspirational design
+- Personal Branding → modern stylish composition
+- Festival Greetings → festive cultural atmosphere
+- Family Event → warm emotional aesthetics
+- Professional Seminar → clean corporate premium style
+- Social Awareness Event → meaningful emotional storytelling
 
 ━━━━━━━━━━━━━━━━━━
-🎯 OCCASION DETAILS
+🧠 AI EVENT UNDERSTANDING
+━━━━━━━━━━━━━━━━━━
+
+The AI must intelligently decide the overall poster styling according to the event type, emotional tone, cultural context, and occasion importance.
+
+The poster may become:
+- grand
+- luxurious
+- festive
+- elegant
+- emotional
+- cinematic
+- minimal
+- modern
+- spiritual
+- premium
+- stylish
+- professional
+- energetic
+- traditional
+- cool
+- soft
+- vibrant
+- royal
+
+depending entirely on what best suits the custom event.
+
+IMPORTANT:
+Do NOT force every poster to look luxurious or overly grand.
+
+Some events require:
+- clean minimal aesthetics
+- emotional simplicity
+- professional modern design
+- soft respectful atmosphere
+- elegant premium balance
+- subtle stylish composition
+
+while other events may require:
+- rich grand celebration visuals
+- luxury decorative styling
+- cinematic premium atmosphere
+- festive cultural richness
+- powerful energetic layouts
+
+The AI should automatically analyze the custom description and decide:
+- visual intensity
+- decoration level
+- luxury level
+- emotional tone
+- lighting style
+- typography mood
+- composition complexity
+- cultural styling
+- background richness
+- overall atmosphere
+
+according to the event naturally.
+
+The final poster should feel intelligently custom-designed specifically for the provided event description instead of using repetitive template-like styling.
+
+━━━━━━━━━━━━━━━━━━
+🎯 EVENT DETAILS
 ━━━━━━━━━━━━━━━━━━
 
 Person Name:
 ${personName}
 
-Occasion:
+Custom Event / Description / Wishes:
 ${description}
 
 ━━━━━━━━━━━━━━━━━━
 🖼️ VISUAL STYLE & BACKGROUND
 ━━━━━━━━━━━━━━━━━━
 
-Generate visuals dynamically according to the occasion.
+Generate visuals dynamically according to the custom event.
 
-Use only relevant visual elements.
+Use only relevant visual elements suitable for the event.
 
-Possible elements (only if suitable):
-- Flowers
-- Balloons
-- Celebration particles
-- Confetti
-- Sparkles
-- Floral borders
-- Luxury ornaments
-- Soft gradients
-- Decorative lighting
-- Romantic effects
-- Elegant textures
-- Modern clean backgrounds
-- Emotional cinematic lighting
+Possible elements:
+- festival visuals
+- flowers
+- celebration particles
+- cinematic lighting
+- confetti
+- elegant gradients
+- luxury ornaments
+- decorative borders
+- traditional patterns
+- spiritual aesthetics
+- emotional cinematic mood
+- modern premium textures
+- cultural elements
+- stylish abstract visuals
+- professional design elements
+- artistic compositions
+
+Use visual elements ONLY when suitable for the event.
 
 The background should feel:
-- Premium
-- Professional
-- Emotional
-- Social-media-ready
-- Beautifully balanced
+- premium
+- professional
+- emotionally connected
+- social-media-ready
+- visually balanced
+- beautifully composed
 
-Avoid overdesigning minimal occasions.
+Avoid:
+- unnecessary decorations
+- random graphics
+- template-like styling
+- cluttered compositions
+- unrelated visuals
 
 ━━━━━━━━━━━━━━━━━━
 👤 PERSON FOCUS
 ━━━━━━━━━━━━━━━━━━
 
-"${personName}" should be beautifully highlighted.
+"${personName}" should be highlighted naturally according to the event.
 
 The name should:
-- Stand out clearly
-- Be stylishly designed
-- Feel premium
-- Match the occasion mood
-- Be mobile-readable
-- Be visually attractive
+- stand out clearly
+- feel premium
+- look visually attractive
+- match the event mood
+- remain readable on mobile
+- blend naturally into the composition
 
 ━━━━━━━━━━━━━━━━━━
 📝 TYPOGRAPHY RULES
 ━━━━━━━━━━━━━━━━━━
 
-Typography should dynamically match the occasion.
+Typography must dynamically adapt according to the custom event mood.
 
 Examples:
-- Birthday → playful premium typography
-- Anniversary → elegant romantic typography
-- Congratulations → bold modern typography
-- Best Wishes → soft minimal typography
+- emotional events → elegant soft typography
+- celebration events → vibrant stylish typography
+- professional events → clean premium typography
+- spiritual events → traditional elegant typography
+- luxury events → classy cinematic typography
 
-Text must:
-- Be crystal clear
-- Be readable on mobile
-- Have proper spacing
-- Look professionally aligned
-- Feel visually premium
+Typography should feel:
+- premium
+- elegant
+- balanced
+- modern
+- professional
+- highly readable
 
 ${
   promptOptions?.isTelugu
@@ -674,42 +757,44 @@ IMPORTANT ENGLISH TEXT RULES:
 }
 
 ━━━━━━━━━━━━━━━━━━
-💬 WISHES MESSAGE
+💬 WISHES / MESSAGE SECTION
 ━━━━━━━━━━━━━━━━━━
 
-Generate a warm wishes message related to the occasion.
+Generate a suitable wishes message or supporting text according to the custom event.
 
-The wishes message should feel:
-- Emotional
-- Genuine
-- Premium
-- Elegant
-- Human-like
-- Social-media-friendly
+The text should feel:
+- emotional
+- natural
+- elegant
+- premium
+- human-like
+- socially engaging
 
-Keep it concise and beautiful.
+Keep it concise and beautifully written.
 
 ━━━━━━━━━━━━━━━━━━
 📐 POSTER LAYOUT
 ━━━━━━━━━━━━━━━━━━
 
-Use a professional balanced layout:
+Use a professional balanced layout.
 
-1. Premium decorative top section
-2. Occasion-related visual composition
-3. Main headline / wishes text
-4. Highlighted person name
-5. Elegant decorative dividers
-6. Premium bottom business section
+Possible layout structure:
+1. Event-related visual atmosphere
+2. Main event headline
+3. Person highlight section
+4. Supporting wishes/message
+5. Decorative or minimal separators if suitable
+6. Premium branding/footer section
 
-Use according to the occasion:
-- minimal design
-- luxury design
-- elegant spacing
-- decorative framing
-- modern clean composition
-- cinematic depth
-- premium layering
+The layout should intelligently adapt according to the event.
+
+Maintain:
+- proper spacing
+- clean hierarchy
+- visual balance
+- cinematic composition
+- premium social-media aesthetics
+- mobile readability
 
 ━━━━━━━━━━━━━━━━━━
 🖼️ ATTACHED IMAGE HANDLING
@@ -720,151 +805,111 @@ ${
     ? `
 IMAGE MODE: ENABLED
 
-The uploaded image(s) represent the MAIN OCCASION PERSON(S).
+The uploaded image(s) represent important people related to the custom event.
 
 IMPORTANT:
-The uploaded person(s) MUST become the MAIN SUBJECT of the poster.
+The uploaded image(s) must be naturally integrated into the poster with visually balanced professional placement.
 
-The entire poster composition should revolve around:
-- the uploaded person
-- the custom occasion
-- the emotional celebration mood
+The AI should intelligently decide:
+- image size
+- image position
+- framing style
+- blending style
+- portrait prominence
+
+according to the event type and poster composition.
 
 STRICT RULES:
-- Use ONLY uploaded image(s) for portrait-style faces
-- Do NOT generate random people
+- Use ONLY uploaded image(s) for real people portraits
+- Do NOT generate fake people
 - Do NOT replace uploaded faces
-- Do NOT add unknown humans
-- Preserve real identity accurately
-- Maintain realistic skin tone and facial structure
-- Keep faces natural, sharp, and recognizable
-- Avoid AI-looking faces
-- Avoid distorted facial features
+- Preserve identity accurately
+- Keep faces natural and recognizable
+- Avoid distorted faces
+- Avoid AI-looking portraits
 
-CUSTOM OCCASION BEHAVIOR:
+IMAGE COMPOSITION RULES:
+- The uploaded image should blend naturally into the poster
+- Maintain proper spacing around the portrait
+- Avoid oversized face placement
+- Avoid awkward cropping
+- Avoid covering important text
+- Avoid unbalanced layouts
+- Maintain premium professional composition
 
-Birthday:
-- vibrant stylish hero portrait
-- celebratory atmosphere
-- modern luxury birthday aesthetics
-- premium cinematic lighting
+BALANCED PLACEMENT RULES:
+The AI should intelligently choose placement depending on the event.
 
-Anniversary:
-- elegant romantic composition
-- emotional couple framing
-- warm premium tones
-- classy decorative styling
+Possible placements:
+- Center hero portrait
+- Side portrait composition
+- Bottom-corner elegant branding placement
+- Soft blended background portrait
+- Layered cinematic composition
+- Premium framed portrait section
+- Multi-image collage layout
 
-Congratulations:
-- achievement-focused premium portrait
-- success-oriented visuals
-- modern professional celebration mood
+The image placement should ALWAYS feel:
+- balanced
+- professional
+- premium
+- visually clean
+- emotionally connected to the event
 
-Farewell:
-- emotional cinematic portrait mood
-- warm memorable atmosphere
-- elegant soft-light composition
+IMPORTANT:
+The EVENT itself should remain the primary visual identity of the poster.
 
-Best Wishes:
-- friendly emotional portrait composition
-- warm modern celebration aesthetics
-
-Festival Wishes:
-- festive portrait integration
-- cultural decorative atmosphere
-- premium celebratory composition
-
-Baby/Family Events:
-- soft emotional family-focused composition
-- warm premium styling
-- elegant emotional balance
-
-PORTRAIT COMPOSITION RULES:
-- The uploaded person should feel like the HERO of the poster
-- Keep face clearly visible
-- Use premium portrait framing
-- Maintain realistic proportions
-- Avoid aggressive crop
-- Avoid awkward cutoffs
-- Match portrait lighting with poster background
-- Use premium cinematic blending
-- Add glow/rim-light only if visually suitable
-- Maintain balanced spacing around the face
-
-PLACEMENT RULES:
-- Center hero composition
-- Side hero composition
-- Cinematic premium framing
-- Emotional visual balance
-- Mobile-friendly composition
+The uploaded image should SUPPORT the event composition naturally instead of overpowering the poster unless the event specifically requires hero portrait focus.
 
 MULTIPLE IMAGE RULES:
 If multiple images are attached:
-- Arrange elegantly
-- Use premium collage/layered composition
-- Keep all faces recognizable
-- Maintain clean composition
-- Avoid clutter
+- arrange them elegantly
+- maintain visual hierarchy
+- keep all faces visible
+- avoid clutter
+- use premium collage/layered composition
 
-The final poster should feel like a professionally designed premium custom celebration poster centered around the uploaded person(s).
+The final output should feel like a professionally designed premium custom event poster with perfectly balanced image integration.
 `
     : `
 IMAGE MODE: DISABLED
 
 Do NOT generate:
-- random portrait-style people
-- unrelated foreground faces
-- fake AI portraits
-- unknown hero subjects
-- random close-up humans
-
-IMPORTANT:
-Contextual humans may appear ONLY if naturally suitable for the custom occasion.
-
-Examples:
-- birthday celebration atmosphere people
-- anniversary silhouettes
-- celebration crowd mood
-- family silhouettes
-- emotional gathering atmosphere
-- cultural celebration participants
-
-However:
-- contextual humans must remain secondary visuals
-- avoid dominant unknown portrait subjects
-- avoid random foreground faces
-- avoid fake AI-generated people
+- fake portraits
+- random foreground people
+- unrelated human subjects
+- AI-generated business-owner faces
+- random close-up portraits
 
 Focus primarily on:
-- occasion identity
-- emotional celebration aesthetics
+- event identity
+- visual storytelling
 - typography
-- decorative visuals
-- premium compositions
-- cinematic lighting
-- luxury celebration mood
-
-The final poster should feel emotionally connected to the custom occasion without random portrait generation.
+- cinematic aesthetics
+- premium composition
+- emotional atmosphere
+- balanced visuals
 `
 }
+
 ${
   promptOptions?.businessName
     ? `
-    ━━━━━━━━━━━━━━━━━━
-    🏢 BUSINESS BRANDING SECTION
-    ━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
+🏢 BUSINESS BRANDING SECTION
+━━━━━━━━━━━━━━━━━━
 
-Include a PREMIUM BUSINESS PANEL at the bottom.
+Include a premium business branding section.
 
 Business Name:
 ${businessName}
 
-Business styling:
-- Elegant
-- Premium
-- Clean
-- Beautifully aligned
-- Professional branding style
+Business styling should feel:
+- elegant
+- premium
+- balanced
+- professional
+- visually integrated
 `
     : ''
 }
@@ -876,8 +921,10 @@ Wisher Name:
 ${wisherName}
 
 Display elegantly ${
-        promptOptions?.businessName ? 'below business details.' : 'at bottom'
-      } 
+        promptOptions?.businessName
+          ? 'below the business section'
+          : 'within the footer section'
+      }.
 `
     : ''
 }
@@ -888,12 +935,11 @@ ${
 Business Address:
 ${businessAddress}
 
-Address rules:
-- Place only in bottom section
-- Small but readable
-- Proper spacing
-- Elegant typography
-- Professional alignment
+Address should:
+- remain small but readable
+- stay properly aligned
+- appear only in footer/business section
+- maintain elegant spacing
 `
     : ''
 }
@@ -904,10 +950,10 @@ ${
 Phone Number:
 ${phoneNumber}
 
-Phone number rules:
-- Stylish placement
-- Small premium typography
-- Neatly aligned near address
+Phone number should:
+- look premium
+- remain readable
+- integrate naturally into the footer
 `
     : ''
 }
@@ -918,38 +964,40 @@ Phone number rules:
 
 Poster quality must be:
 - Ultra 8K
-- Extremely sharp
-- High detail
-- Professional quality
-- Mobile optimized
-- Social-media ready
-- Premium composition
+- extremely sharp
+- highly detailed
+- professional quality
+- social-media ready
+- mobile optimized
+- visually premium
 - WhatsApp status friendly
 
 Use:
-- realistic lighting
+- cinematic lighting
 - premium shadows
-- cinematic glow
 - elegant gradients
-- luxury finishing
-- modern texture detailing
+- realistic depth
+- modern textures
+- stylish visual layering
+- balanced compositions
 
 ━━━━━━━━━━━━━━━━━━
 🚫 NEGATIVE RULES
 ━━━━━━━━━━━━━━━━━━
 
 DO NOT:
-- Add logos
-- Add watermarks
-- Use blurry text
-- Use broken Telugu text
-- Create spelling mistakes
-- Overcrowd the design
-- Use unrelated graphics
-- Distort typography
-- Use low-quality visuals
-- Make text unreadable
-- Create messy composition
+- add logos
+- add watermarks
+- use blurry text
+- create spelling mistakes
+- generate broken Telugu text
+- overcrowd the layout
+- use unrelated visuals
+- create messy composition
+- distort typography
+- create low-quality graphics
+- overuse decorations
+- make every poster look identical
 
 ━━━━━━━━━━━━━━━━━━
 📱 FINAL OUTPUT
@@ -959,13 +1007,11 @@ DO NOT:
 - Perfect for WhatsApp status
 - Perfect for Instagram post
 - Designer-quality composition
-- Professional Indian social media poster
+- Premium Indian social media poster
 - Crystal-clear typography
 - High-end premium finish
 
-Generate a BEAUTIFUL MASTERPIECE-LEVEL CUSTOM POSTER with emotionally engaging and visually premium aesthetics.
-
-`;
+Generate a BEAUTIFUL MASTERPIECE-LEVEL CUSTOM EVENT POSTER with emotionally engaging, visually balanced, intelligently designed premium aesthetics.`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -976,45 +1022,35 @@ const AI_APPS = [
   {
     name: 'ChatGPT',
     icon: '🤖',
-    appUrl: text => `chatgpt://chat?text=${encodeURIComponent(text)}`,
-    webUrl: text =>
-      `https://chat.openai.com/?q=${encodeURIComponent(
-        text.substring(0, 100000),
-      )}`,
   },
 
   {
     name: 'Gemini',
     icon: '✦',
-    appUrl: () => `gemini://`,
-    webUrl: () => `https://gemini.google.com/`,
   },
 ];
 
-async function openInAI(app, prompt) {
-  const appUrl = app.appUrl(prompt);
-  const webUrl = app.webUrl(prompt);
+const PACKAGE_NAMES = {
+  ChatGPT: 'com.openai.chatgpt',
+  Gemini: 'com.google.android.apps.bard',
+};
 
-  try {
-    const canOpen = await Linking.canOpenURL(appUrl);
-    if (app.name === 'Gemini') {
-      await Clipboard.setString(prompt);
-    }
-    if (canOpen) {
-      await Linking.openURL(appUrl);
-    } else {
-      await Linking.openURL(webUrl);
-    }
-  } catch {
-    try {
-      await Linking.openURL(webUrl);
-    } catch {
-      toast.error(
-        `Could not open ${app.name}, Copy the prompt manually and paste into ${app.name}.`,
-      );
-    }
-  }
-}
+const AI_APP_PACKAGES = {
+  ChatGPT: ['com.openai.chatgpt'],
+
+  Gemini: [
+    'com.google.android.apps.bard',
+    'com.google.android.googlequicksearchbox',
+  ],
+  WhatsApp: ['com.whatsapp'],
+};
+
+const APP_LINKS = {
+  ChatGPT: 'https://play.google.com/store/apps/details?id=com.openai.chatgpt',
+  Gemini:
+    'https://play.google.com/store/apps/details?id=com.google.android.apps.bard',
+  WhatsApp: 'https://play.google.com/store/apps/details?id=com.whatsapp',
+};
 
 // ─────────────────────────────────────────────────────────────
 // Step Indicator
@@ -1128,41 +1164,72 @@ function StepIndicator({ currentStep = 1 }) {
 // ─────────────────────────────────────────────────────────────
 
 export default function PosterScreen({ navigation, route }) {
-  const { event, isCustom, customParams } = route.params || {};
+  const { event, isCustom = false, customParams = {} } = route.params || {};
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState(null);
   const [prompt, setPrompt] = useState('');
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState('full');
   const [promptOptions, setPromptOptions] = useState({
-    businessName: isCustom ? false : false,
+    businessName: false,
     wisherName: true,
-    businessAddress: isCustom ? false : false,
-    phoneNumber: isCustom ? false : false,
+    businessAddress: false,
+    phoneNumber: false,
     isTelugu: true,
-    attachImage: false,
+    attachImage: true,
   });
 
   useEffect(() => {
     if (profile) {
+      applyPreset('full');
       setPromptOptions(prev => ({
         ...prev,
-
         businessName: isCustom ? false : !!profile?.businessName,
-
         businessAddress: isCustom ? false : false,
-
         phoneNumber: isCustom ? false : false,
       }));
     }
   }, [profile, isCustom]);
 
   const togglePromptOption = key => {
+    // Prevent disabling
+    // custom uploaded image
+    if (key === 'attachImage' && isCustom && customImage) {
+      return;
+    }
+
     setPromptOptions(prev => ({
       ...prev,
       [key]: !prev[key],
     }));
   };
+
+  const applyPreset = preset => {
+    setSelectedPreset(preset);
+
+    // FULL BRANDING
+    if (preset === 'full') {
+      setPromptOptions({
+        businessName: !isCustom && !!profile?.businessName,
+        wisherName: true,
+        businessAddress: !isCustom && !!profile?.businessAddress,
+        phoneNumber: !isCustom && !!profile?.phone,
+        isTelugu: true,
+        attachImage: isCustom ? !!customImage : true,
+      });
+
+      return;
+    }
+
+    // CUSTOM MODE
+    if (preset === 'custom') {
+      setPromptOptions(prev => ({
+        ...prev,
+      }));
+    }
+  };
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const eventTitle = isCustom
@@ -1174,6 +1241,7 @@ export default function PosterScreen({ navigation, route }) {
     : event?.date
     ? `${event.date} · ${event.category || 'National Holiday'}`
     : null;
+  const customImage = customParams?.customImage;
 
   // ─────────────────────────────────────────
   // Load Profile
@@ -1188,6 +1256,17 @@ export default function PosterScreen({ navigation, route }) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    // Auto enable image sharing
+    // for custom uploaded image
+    if (isCustom && customImage) {
+      setPromptOptions(prev => ({
+        ...prev,
+        attachImage: true,
+      }));
+    }
+  }, [isCustom, customImage]);
 
   // ─────────────────────────────────────────
   // Build Prompt
@@ -1213,7 +1292,7 @@ export default function PosterScreen({ navigation, route }) {
       duration: 500,
       useNativeDriver: true,
     }).start();
-  }, [profile, promptOptions]);
+  }, [profile, promptOptions, customParams, event, isCustom]);
 
   // ─────────────────────────────────────────
   // Copy
@@ -1229,23 +1308,145 @@ export default function PosterScreen({ navigation, route }) {
     }, 1800);
   };
 
+  const checkAIAppInstalled = async appName => {
+    try {
+      const packages = AI_APP_PACKAGES[appName] || [];
+
+      for (const pkg of packages) {
+        const installed = await ShareToAI.isAppInstalled(pkg);
+
+        if (installed) {
+          return pkg;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      console.log('INSTALL CHECK ERROR:', e);
+
+      return null;
+    }
+  };
+
+  const showAppNotInstalled = appName => {
+    toast.error(`${appName} is not installed`, {
+      description: 'Redirecting to Play Store...',
+      duration: 2500,
+    });
+
+    setTimeout(() => {
+      Linking.openURL(APP_LINKS[appName]);
+    }, 1800);
+  };
+
+  //openinaiapps
+  const openInAI = async (app, prompt, options = {}) => {
+    try {
+      const packageName = await checkAIAppInstalled(app.name);
+      if (!packageName) {
+        showAppNotInstalled(app.name);
+        return;
+      }
+
+      const { attachImage = false, isCustom = false } = options;
+
+      // Determine image usage
+      const shouldAttachImage =
+        attachImage && (!isCustom || (isCustom && !!customImage));
+
+      let savedImage = null;
+
+      // ─────────────────────────────
+      // GET IMAGE
+      // ─────────────────────────────
+
+      if (shouldAttachImage) {
+        // Custom uploaded image
+        if (isCustom && customImage) {
+          savedImage = customImage;
+        } else {
+          // Profile image
+          savedImage = await getProfileImage();
+        }
+      }
+
+      // ─────────────────────────────
+      // IMAGE + PROMPT MODE
+      // ─────────────────────────────
+
+      if (savedImage) {
+        // Copy prompt always
+        Clipboard.setString(prompt);
+        await ShareToAI.shareToApp(packageName, savedImage, prompt);
+        return;
+      }
+
+      // ─────────────────────────────
+      // PROMPT ONLY MODE
+      // ─────────────────────────────
+
+      await ShareToAI.shareTextToApp(packageName, prompt);
+    } catch (error) {
+      console.log('OPEN AI ERROR:', error);
+
+      toast.error(`Could not open ${app.name}`);
+    }
+  };
+
   // ─────────────────────────────────────────
   // Share
   // ─────────────────────────────────────────
 
   const handleShare = async via => {
     try {
+      // WhatsApp
       if (via === 'whatsapp') {
-        const url = `whatsapp://send?text=${encodeURIComponent(prompt)}`;
-        await Linking.openURL(url);
-        const canOpen = await Linking.canOpenURL(url);
-      } else {
-        await Share.share({
-          message: prompt,
-          title: `${eventTitle} — Poster Prompt`,
-        });
+        const packageName = await checkAIAppInstalled('WhatsApp');
+
+        if (!packageName) {
+          toast.error('WhatsApp is not installed');
+
+          return;
+        }
+
+        // IMAGE + TEXT
+        if (customImage || promptOptions?.attachImage) {
+          let imagePath = null;
+
+          // Custom uploaded image
+          if (isCustom && customImage) {
+            imagePath = customImage;
+          }
+
+          // Profile image
+          else if (promptOptions?.attachImage) {
+            imagePath = await getProfileImage();
+          }
+
+          // Share image + prompt
+          if (imagePath) {
+            await ShareToAI.shareToApp(packageName, imagePath, prompt);
+
+            return;
+          }
+        }
+
+        // Text only
+        await ShareToAI.shareTextToApp(packageName, prompt);
+
+        return;
       }
-    } catch {}
+
+      // Generic Share
+      await Share.share({
+        message: prompt,
+        title: `${eventTitle} — Poster Prompt`,
+      });
+    } catch (e) {
+      console.log('WHATSAPP SHARE ERROR:', e);
+
+      toast.error('Could not share');
+    }
   };
 
   const cardShadow = {
@@ -1391,8 +1592,6 @@ export default function PosterScreen({ navigation, route }) {
             )}
           </View>
         </View>
-
-        <StepIndicator currentStep={2} />
       </View>
 
       {/* Content */}
@@ -1556,24 +1755,23 @@ export default function PosterScreen({ navigation, route }) {
           }}
         >
           {/* Header */}
-
           <View
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: verticalScale(14),
+              marginBottom: verticalScale(18),
             }}
           >
             <View>
               <Text
                 style={{
-                  fontSize: moderateScale(14),
+                  fontSize: moderateScale(15),
                   fontFamily: 'Inter-Bold',
                   color: '#1A1A2E',
                 }}
               >
-                Prompt Details
+                Prompt Style
               </Text>
 
               <Text
@@ -1584,179 +1782,242 @@ export default function PosterScreen({ navigation, route }) {
                   marginTop: 3,
                 }}
               >
-                Select details to include in AI prompt
+                Choose how AI should generate poster
               </Text>
             </View>
 
             <View
               style={{
-                width: scale(42),
-                height: scale(42),
-                borderRadius: scale(21),
+                width: scale(44),
+                height: scale(44),
+                borderRadius: scale(22),
                 backgroundColor: '#EEF4FF',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Astroid size={22} color="#0D47A1" />
+              <Astroid size={22} color="#2563EB" />
             </View>
           </View>
 
           {/* Toggle List */}
-
-          {[
-            {
-              key: 'businessName',
-              title: 'Business Name',
-              subtitle: 'Include business/store name',
-              Icon: Building2,
-              isDisplay: !isCustom && !!profile?.businessName,
-            },
-            {
-              key: 'wisherName',
-              title: 'Wisher Name',
-              subtitle: 'Include greeting sender',
-              Icon: CircleUserRound,
-              isDisplay: true,
-            },
-
-            {
-              key: 'businessAddress',
-              title: 'Business Address',
-              subtitle: 'Include address in footer',
-              Icon: MapPin,
-              isDisplay: !isCustom && !!profile?.businessAddress,
-            },
-
-            {
-              key: 'phoneNumber',
-              title: 'Phone Number',
-              subtitle: 'Include contact number',
-              Icon: Phone,
-              isDisplay: !isCustom && !!profile?.phone,
-            },
-
-            {
-              key: 'isTelugu',
-              title: 'Telugu Poster',
-              subtitle: 'Toggle for poster in Telugu',
-              Icon: Languages,
-              isDisplay: true,
-            },
-
-            {
-              key: 'attachImage',
-              title: 'Attach Image',
-              subtitle: 'Toggle to attach image',
-              Icon: Paperclip,
-              isDisplay: true,
-            },
-          ]
-            .filter(item => item.isDisplay)
-            .map(item => {
-              const enabled = promptOptions[item.key];
-
-              const IconComponent = item.Icon;
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: scale(10),
+              marginBottom: verticalScale(18),
+            }}
+          >
+            {[
+              {
+                key: 'full',
+                label: 'Recommended (Telugu)',
+              },
+              {
+                key: 'custom',
+                label: 'Customize',
+              },
+            ].map(item => {
+              const active = selectedPreset === item.key;
 
               return (
-                <View
+                <TouchableOpacity
                   key={item.key}
+                  activeOpacity={0.9}
+                  onPress={() => applyPreset(item.key)}
                   style={{
-                    flexDirection: 'row',
+                    flex: 1,
+
+                    paddingVertical: verticalScale(13),
+
+                    borderRadius: scale(16),
+
+                    backgroundColor: active ? '#2563EB' : '#F3F4F6',
+
                     alignItems: 'center',
-                    justifyContent: 'space-between',
 
-                    paddingVertical: verticalScale(12),
+                    borderWidth: 1,
 
-                    borderTopWidth: 1,
-                    borderTopColor: '#F1F1F1',
+                    borderColor: active ? '#2563EB' : '#E5E7EB',
                   }}
                 >
-                  {/* Left */}
-
-                  <View
+                  <Text
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      flex: 1,
+                      color: active ? '#FFFFFF' : '#374151',
+
+                      fontSize: moderateScale(12),
+
+                      fontFamily: 'Inter-Bold',
                     }}
                   >
-                    <View
-                      style={{
-                        width: scale(40),
-                        height: scale(40),
-                        borderRadius: scale(12),
-
-                        backgroundColor: enabled ? '#EEF4FF' : '#F4F4F4',
-
-                        alignItems: 'center',
-                        justifyContent: 'center',
-
-                        marginRight: scale(12),
-                      }}
-                    >
-                      <IconComponent
-                        size={22}
-                        color={enabled ? '#0D47A1' : '#6B7280'}
-                      />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: moderateScale(13),
-                          fontFamily: 'Inter-SemiBold',
-                          color: '#1A1A2E',
-                        }}
-                      >
-                        {item.title}
-                      </Text>
-
-                      <Text
-                        style={{
-                          fontSize: moderateScale(11),
-                          color: '#8A8A8A',
-                          fontFamily: 'Inter-Regular',
-                          marginTop: 2,
-                        }}
-                      >
-                        {item.subtitle}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Toggle */}
-
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => togglePromptOption(item.key)}
-                    style={{
-                      width: scale(52),
-                      height: scale(30),
-                      borderRadius: scale(15),
-
-                      backgroundColor: enabled ? '#0D47A1' : '#D1D5DB',
-
-                      padding: scale(3),
-
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Animated.View
-                      style={{
-                        width: scale(24),
-                        height: scale(24),
-                        borderRadius: scale(12),
-
-                        backgroundColor: '#FFFFFF',
-
-                        alignSelf: enabled ? 'flex-end' : 'flex-start',
-                      }}
-                    />
-                  </TouchableOpacity>
-                </View>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
               );
             })}
+          </View>
+          {selectedPreset === 'custom' && (
+            <>
+              {[
+                {
+                  key: 'businessName',
+                  title: 'Business Name',
+                  subtitle: 'Include business/store name',
+                  Icon: Building2,
+                  isDisplay: !isCustom && !!profile?.businessName,
+                },
+                {
+                  key: 'wisherName',
+                  title: 'Wisher Name',
+                  subtitle: 'Include greeting sender',
+                  Icon: CircleUserRound,
+                  isDisplay: true,
+                },
+
+                {
+                  key: 'businessAddress',
+                  title: 'Business Address',
+                  subtitle: 'Include address in footer',
+                  Icon: MapPin,
+                  isDisplay: !isCustom && !!profile?.businessAddress,
+                },
+
+                {
+                  key: 'phoneNumber',
+                  title: 'Phone Number',
+                  subtitle: 'Include contact number',
+                  Icon: Phone,
+                  isDisplay: !isCustom && !!profile?.phone,
+                },
+
+                {
+                  key: 'isTelugu',
+                  title: 'Telugu Poster',
+                  subtitle: 'Toggle for poster in Telugu',
+                  Icon: Languages,
+                  isDisplay: true,
+                },
+
+                {
+                  key: 'attachImage',
+                  title: 'Attach Image',
+                  subtitle: isCustom
+                    ? customImage
+                      ? 'Custom uploaded image will be shared'
+                      : 'No custom image selected'
+                    : 'Profile image will be shared',
+                  Icon: ImageIcon,
+                  isDisplay: true,
+                  disabled: isCustom && !!customImage,
+                },
+              ]
+                .filter(item => item.isDisplay)
+                .map(item => {
+                  const enabled = promptOptions[item.key];
+                  const IconComponent = item.Icon;
+
+                  return (
+                    <View
+                      key={item.key}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: verticalScale(12),
+                        borderTopWidth: 1,
+                        borderTopColor: '#F1F1F1',
+                      }}
+                    >
+                      {/* Left */}
+
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          flex: 1,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: scale(40),
+                            height: scale(40),
+                            borderRadius: scale(12),
+
+                            backgroundColor: enabled ? '#EEF4FF' : '#F4F4F4',
+
+                            alignItems: 'center',
+                            justifyContent: 'center',
+
+                            marginRight: scale(12),
+                          }}
+                        >
+                          <IconComponent
+                            size={22}
+                            color={enabled ? '#0D47A1' : '#6B7280'}
+                          />
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              fontSize: moderateScale(13),
+                              fontFamily: 'Inter-SemiBold',
+                              color: '#1A1A2E',
+                            }}
+                          >
+                            {item.title}
+                          </Text>
+
+                          <Text
+                            style={{
+                              fontSize: moderateScale(11),
+                              color: '#8A8A8A',
+                              fontFamily: 'Inter-Regular',
+                              marginTop: 2,
+                            }}
+                          >
+                            {item.subtitle}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Toggle */}
+
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          if (item.disabled) {
+                            return;
+                          }
+                          togglePromptOption(item.key);
+                        }}
+                        style={{
+                          width: scale(52),
+                          height: scale(30),
+                          opacity: item.disabled ? 0.65 : 1,
+                          borderRadius: scale(15),
+                          backgroundColor: enabled ? '#0D47A1' : '#D1D5DB',
+                          padding: scale(3),
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Animated.View
+                          style={{
+                            width: scale(24),
+                            height: scale(24),
+                            borderRadius: scale(12),
+
+                            backgroundColor: '#FFFFFF',
+
+                            alignSelf: enabled ? 'flex-end' : 'flex-start',
+                          }}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+            </>
+          )}
         </View>
         {/* AI Apps */}
 
@@ -1781,7 +2042,12 @@ export default function PosterScreen({ navigation, route }) {
           {AI_APPS.map(app => (
             <TouchableOpacity
               key={app.name}
-              onPress={() => openInAI(app, prompt)}
+              onPress={() =>
+                openInAI(app, prompt, {
+                  attachImage: promptOptions.attachImage,
+                  isCustom,
+                })
+              }
               activeOpacity={0.8}
               style={{
                 flex: 1,

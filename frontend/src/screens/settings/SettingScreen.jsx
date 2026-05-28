@@ -30,9 +30,11 @@ import {
   Info,
   Key,
   Lock,
+  BadgeCheck,
 } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Image from 'react-native-fast-image';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, GRADIENTS } from '../../constants/colors';
@@ -42,6 +44,7 @@ import { toast, Toaster } from 'sonner-native';
 import Modal from 'react-native-modal';
 import InputField from '../../components/common/InputField';
 import eventsService from '../../services/api/eventsService';
+import { getProfileImage } from '../../utils/profileImage';
 
 const ADMIN_CODE_KEY = 'ADMIN_CODE_KEY';
 
@@ -175,6 +178,21 @@ export default function SettingsScreen({ navigation }) {
   const [isAdminActivated, setIsAdminActivated] = useState(false);
   const [activatingAdmin, setActivatingAdmin] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [selectedImage, setSelectedImage] = useState('');
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadImage = async () => {
+        const savedImage = await getProfileImage();
+
+        if (savedImage) {
+          setSelectedImage(savedImage);
+        }
+      };
+
+      loadImage();
+    }, []),
+  );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -209,6 +227,11 @@ export default function SettingsScreen({ navigation }) {
           const savedCode = await AsyncStorage.getItem(ADMIN_CODE_KEY);
 
           setIsAdminActivated(!!savedCode);
+          const savedImage = await getProfileImage();
+
+          if (savedImage) {
+            setSelectedImage(savedImage);
+          }
         } catch (err) {
           setIsAdminActivated(false);
         }
@@ -401,6 +424,11 @@ export default function SettingsScreen({ navigation }) {
         {/* ── Profile Summary Card ── */}
         <TouchableOpacity
           activeOpacity={0.85}
+          onPress={() =>
+            navigation.navigate('Profile', {
+              editMode: true,
+            })
+          }
           style={{
             marginBottom: verticalScale(20),
             marginTop: verticalScale(4),
@@ -436,23 +464,35 @@ export default function SettingsScreen({ navigation }) {
             {/* Avatar */}
             <View
               style={{
-                width: scale(52),
-                height: scale(52),
-                borderRadius: scale(26),
+                width: scale(58),
+                height: scale(58),
+                borderRadius: scale(29),
+                overflow: 'hidden',
                 backgroundColor: 'rgba(255,255,255,0.25)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Text
-                style={{
-                  color: '#fff',
-                  fontSize: moderateScale(20),
-                  fontFamily: 'Inter-Bold',
-                }}
-              >
-                {initials}
-              </Text>
+              {selectedImage ? (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                  }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text
+                  style={{
+                    color: '#fff',
+                    fontSize: moderateScale(20),
+                    fontFamily: 'Inter-Bold',
+                  }}
+                >
+                  {initials}
+                </Text>
+              )}
             </View>
 
             {/* Name + Business */}
@@ -572,9 +612,9 @@ export default function SettingsScreen({ navigation }) {
             icon={<Info size={22} color="#0D47A1" />}
             iconBg="#E3F2FD"
             label="About"
-            sublabel="Version 1.0.0"
+            sublabel="Version 5.4.3"
             onPress={() =>
-              toast.info('ShubhaM.Ai 2.4.3\nMade with ❤️ in India')
+              toast.info('ShubhaM.Ai 5.4.3\nMade with ❤️ in India')
             }
             isLast
           />
@@ -602,7 +642,7 @@ export default function SettingsScreen({ navigation }) {
               fontFamily: 'Inter-Regular',
             }}
           >
-            ShubhaM.Ai • 2.4.3 • Made in India 🇮🇳
+            ShubhaM.Ai • 5.4.3 • Made in India 🇮🇳
           </Text>
         </View>
       </ScrollView>
@@ -779,8 +819,13 @@ export default function SettingsScreen({ navigation }) {
           }}
         >
           {/* Icon */}
+
           <LinearGradient
-            colors={['rgba(239,68,68,0.15)', 'rgba(220,38,38,0.08)']}
+            colors={
+              isAdminActivated
+                ? ['rgba(16,185,129,0.18)', 'rgba(34,197,94,0.10)']
+                : ['rgba(239,68,68,0.15)', 'rgba(220,38,38,0.08)']
+            }
             style={{
               width: scale(72),
               height: scale(72),
@@ -790,10 +835,15 @@ export default function SettingsScreen({ navigation }) {
               marginBottom: scale(18),
             }}
           >
-            <UserKey size={32} color="#EF4444" strokeWidth={2.3} />
+            {isAdminActivated ? (
+              <BadgeCheck size={34} color="#10B981" strokeWidth={2.3} />
+            ) : (
+              <UserKey size={32} color="#EF4444" strokeWidth={2.3} />
+            )}
           </LinearGradient>
 
           {/* Title */}
+
           <Text
             style={{
               fontSize: moderateScale(20),
@@ -802,10 +852,11 @@ export default function SettingsScreen({ navigation }) {
               marginBottom: scale(8),
             }}
           >
-            Admin Code
+            {isAdminActivated ? 'Admin Mode Activated' : 'Admin Code'}
           </Text>
 
           {/* Description */}
+
           <Text
             style={{
               fontSize: moderateScale(13),
@@ -813,93 +864,177 @@ export default function SettingsScreen({ navigation }) {
               color: '#6B7280',
               textAlign: 'center',
               lineHeight: 22,
-              marginBottom: scale(24),
+              marginBottom: scale(18),
             }}
           >
-            Please enter the admin access code to manage event settings and
-            controls.
+            {isAdminActivated
+              ? 'You already have administrator access enabled for managing events and controls.'
+              : 'Please enter the admin access code to manage event settings and controls.'}
           </Text>
 
-          <View
-            style={{
-              width: '100%',
-              marginVertical: scale(6),
-            }}
-          >
-            <InputField
-              placeholder="Activation code"
-              value={admincode}
-              onChangeText={text => {
-                setadmincode(text);
-                if (errorText) {
-                  setErrorText('');
-                }
+          {/* Success Badge */}
+
+          {isAdminActivated && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: scale(6),
+
+                backgroundColor: 'rgba(16,185,129,0.12)',
+
+                paddingHorizontal: scale(14),
+                paddingVertical: scale(10),
+
+                borderRadius: scale(14),
+
+                marginBottom: scale(8),
               }}
-              icon={<Lock size={22} color="#0D47A1" />}
-            />
-            {errorText ? (
+            >
+              <BadgeCheck size={18} color="#10B981" strokeWidth={2.4} />
+
               <Text
                 style={{
-                  color: '#EF4444',
-                  fontSize: moderateScale(12),
-                  fontFamily: 'Inter-Regular',
-                  paddingHorizontal: scale(6),
+                  color: '#10B981',
+                  fontSize: moderateScale(13),
+                  fontFamily: 'Inter-Bold',
                 }}
               >
-                * {errorText}
+                Admin mode activated
               </Text>
-            ) : null}
-          </View>
+            </View>
+          )}
 
-          {/* Buttons */}
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: scale(10),
-              width: '100%',
-            }}
-          >
-            {/* Cancel */}
+          {/* Input + Buttons */}
+
+          {!isAdminActivated && (
+            <>
+              <View
+                style={{
+                  width: '100%',
+                  marginVertical: scale(6),
+                }}
+              >
+                <InputField
+                  placeholder="Activation code"
+                  value={admincode}
+                  onChangeText={text => {
+                    setadmincode(text);
+
+                    if (errorText) {
+                      setErrorText('');
+                    }
+                  }}
+                  icon={<Lock size={22} color="#0D47A1" />}
+                />
+
+                {errorText ? (
+                  <Text
+                    style={{
+                      color: '#EF4444',
+                      fontSize: moderateScale(12),
+                      fontFamily: 'Inter-Regular',
+                      paddingHorizontal: scale(6),
+                    }}
+                  >
+                    * {errorText}
+                  </Text>
+                ) : null}
+              </View>
+
+              {/* Buttons */}
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                  gap: scale(10),
+                  width: '100%',
+                  marginTop: scale(6),
+                }}
+              >
+                {/* Cancel */}
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setadminCodeModal(false);
+                    setadmincode('');
+                    setErrorText('');
+                  }}
+                  activeOpacity={0.85}
+                  style={{
+                    flex: 1,
+                    height: scale(52),
+                    borderRadius: scale(16),
+                    backgroundColor: '#F3F4F6',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#6B7280',
+                      fontSize: moderateScale(14),
+                      fontFamily: 'Inter-SemiBold',
+                    }}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Activate */}
+
+                <TouchableOpacity
+                  onPress={confirmAddAdminCode}
+                  disabled={activatingAdmin}
+                  activeOpacity={0.9}
+                  style={{
+                    flex: 1,
+                    borderRadius: scale(16),
+                    overflow: 'hidden',
+                  }}
+                >
+                  <LinearGradient
+                    colors={['#00C853', '#B2FF59']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      height: scale(52),
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: '#FFFFFF',
+                        fontSize: moderateScale(14),
+                        fontFamily: 'Inter-Bold',
+                      }}
+                    >
+                      {activatingAdmin ? 'Activating...' : 'Activate'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* Close Button When Activated */}
+
+          {isAdminActivated && (
             <TouchableOpacity
               onPress={() => {
                 setadminCodeModal(false);
-                setadmincode('');
-                setErrorText('');
               }}
-              activeOpacity={0.85}
-              style={{
-                flex: 1,
-                height: scale(52),
-                borderRadius: scale(16),
-                backgroundColor: '#F3F4F6',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text
-                style={{
-                  color: '#6B7280',
-                  fontSize: moderateScale(14),
-                  fontFamily: 'Inter-SemiBold',
-                }}
-              >
-                Cancel
-              </Text>
-            </TouchableOpacity>
-
-            {/* Clear */}
-            <TouchableOpacity
-              onPress={confirmAddAdminCode}
-              disabled={activatingAdmin}
               activeOpacity={0.9}
               style={{
-                flex: 1,
+                width: '100%',
+                marginTop: scale(18),
                 borderRadius: scale(16),
                 overflow: 'hidden',
               }}
             >
               <LinearGradient
-                colors={['#00C853', '#B2FF59']}
+                colors={['#10B981', '#34D399']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{
@@ -915,11 +1050,11 @@ export default function SettingsScreen({ navigation }) {
                     fontFamily: 'Inter-Bold',
                   }}
                 >
-                  {activatingAdmin ? 'Activating...' : 'Activate'}
+                  Continue
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+          )}
         </View>
       </Modal>
     </View>
