@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   StatusBar,
   ScrollView,
   TouchableOpacity,
@@ -16,6 +17,7 @@ import {
 } from 'react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -45,7 +47,7 @@ import { scale, verticalScale, moderateScale } from '../../utils/responsive';
 import { ROUTES } from '../../navigation/routes';
 
 import eventsService from '../../services/api/eventsService';
-
+import { getProfileImage } from '../../utils/profileImage';
 import { getInitials, getFirstName, getGreeting } from '../../utils/helpers';
 import GradientText from '../../components/common/GradientText';
 import { checkProfileAndNavigate } from '../../utils/profileCheck';
@@ -349,6 +351,7 @@ export default function HomeScreen({ navigation }) {
   const [topEvents, setTopEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -367,6 +370,17 @@ export default function HomeScreen({ navigation }) {
 
     return unsubscribe;
   }, [navigation]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadImage = async () => {
+        const savedImage = await getProfileImage();
+        setSelectedImage(savedImage || '');
+      };
+
+      loadImage();
+    }, []),
+  );
 
   const fetchTodayEvents = useCallback(async () => {
     try {
@@ -390,7 +404,6 @@ export default function HomeScreen({ navigation }) {
       });
 
       setTopEvents(uniqueEvents);
-      
     } catch (err) {
       console.log('Today Events Error:', err);
 
@@ -521,31 +534,45 @@ export default function HomeScreen({ navigation }) {
               style={{
                 width: scale(48),
                 height: scale(48),
+                borderRadius: scale(24),
+                overflow: 'hidden',
               }}
             >
-              <LinearGradient
-                colors={['rgba(0,188,212,0.22)', 'rgba(13,71,161,0.18)']}
-                start={{ x: 0, y: 1 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: scale(48),
-                  height: scale(48),
-                  borderRadius: scale(24),
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: 'rgba(255,255,255,0.25)',
-                }}
-              >
-                <Text
+              {selectedImage ? (
+                <Image
+                  source={{ uri: selectedImage }}
                   style={{
-                    fontFamily: 'Inter-Bold',
-                    fontSize: moderateScale(16),
-                    color: '#0D47A1',
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: scale(24),
+                  }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <LinearGradient
+                  colors={['rgba(0,188,212,0.22)', 'rgba(13,71,161,0.18)']}
+                  start={{ x: 0, y: 1 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: scale(24),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(255,255,255,0.25)',
                   }}
                 >
-                  {initials === '?' ? 'SM' : initials}
-                </Text>
-              </LinearGradient>
+                  <Text
+                    style={{
+                      fontFamily: 'Inter-Bold',
+                      fontSize: moderateScale(16),
+                      color: '#0D47A1',
+                    }}
+                  >
+                    {initials === '?' ? 'SM' : initials}
+                  </Text>
+                </LinearGradient>
+              )}
             </View>
           </TouchableOpacity>
         </View>
@@ -705,7 +732,7 @@ export default function HomeScreen({ navigation }) {
                     <View
                       style={{
                         height: scale(28), // fixed text area
-                        justifyContent: 'start',
+                        justifyContent: 'flex-start',
                         alignItems: 'center',
                       }}
                     >

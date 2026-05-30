@@ -1056,108 +1056,6 @@ const APP_LINKS = {
 // Step Indicator
 // ─────────────────────────────────────────────────────────────
 
-function StepIndicator({ currentStep = 1 }) {
-  const steps = [
-    { num: 1, label: 'Copy Prompt' },
-    { num: 2, label: 'Open AI App' },
-    { num: 3, label: 'Get Poster' },
-  ];
-
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: scale(16),
-        paddingVertical: verticalScale(14),
-      }}
-    >
-      {steps.map((step, i) => {
-        const isActive = step.num === currentStep;
-        const isDone = step.num < currentStep;
-
-        return (
-          <React.Fragment key={step.num}>
-            <View
-              style={{
-                alignItems: 'center',
-                gap: scale(4),
-              }}
-            >
-              {isActive ? (
-                <LinearGradient
-                  colors={GRADIENTS.primary}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    width: scale(28),
-                    height: scale(28),
-                    borderRadius: scale(14),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: '#fff',
-                      fontSize: moderateScale(12),
-                      fontFamily: 'Inter-Bold',
-                    }}
-                  >
-                    {step.num}
-                  </Text>
-                </LinearGradient>
-              ) : (
-                <View
-                  style={{
-                    width: scale(28),
-                    height: scale(28),
-                    borderRadius: scale(14),
-                    backgroundColor: isDone ? COLORS.primary : '#E8E8E8',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: isDone ? '#fff' : '#AAAAAA',
-                      fontSize: moderateScale(12),
-                      fontFamily: 'Inter-Bold',
-                    }}
-                  >
-                    {step.num}
-                  </Text>
-                </View>
-              )}
-
-              <Text
-                style={{
-                  fontSize: moderateScale(9),
-                  fontFamily: 'Inter-SemiBold',
-                  color: isActive ? COLORS.primary : '#AAAAAA',
-                }}
-              >
-                {step.label}
-              </Text>
-            </View>
-
-            {i < steps.length - 1 && (
-              <View
-                style={{
-                  flex: 1,
-                  height: 1.5,
-                  backgroundColor: '#E0E0E0',
-                  marginBottom: scale(14),
-                  marginHorizontal: scale(4),
-                }}
-              />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </View>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────
 // Main Screen
@@ -1186,8 +1084,8 @@ export default function PosterScreen({ navigation, route }) {
       setPromptOptions(prev => ({
         ...prev,
         businessName: isCustom ? false : !!profile?.businessName,
-        businessAddress: isCustom ? false : false,
-        phoneNumber: isCustom ? false : false,
+        businessAddress: isCustom ? false : !!profile?.businessAddress,
+        phoneNumber: isCustom ? false : !!profile?.phone,
       }));
     }
   }, [profile, isCustom]);

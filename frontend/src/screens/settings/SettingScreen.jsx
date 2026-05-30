@@ -3,7 +3,7 @@
 // profile summary card at top, grouped setting rows with icons,
 // version info at bottom.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,16 +11,11 @@ import {
   ScrollView,
   Switch,
   StatusBar,
-  Alert,
-  useWindowDimensions,
 } from 'react-native';
 import {
   ChevronRight,
-  Sparkles,
   CalendarDays,
   Calendar1,
-  CalendarClock,
-  CalendarX,
   User,
   Building2,
   Trash2,
@@ -28,23 +23,21 @@ import {
   Share2,
   UserKey,
   Info,
-  Key,
   Lock,
   BadgeCheck,
 } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Image from 'react-native-fast-image';
+import FastImage from 'react-native-fast-image';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, GRADIENTS } from '../../constants/colors';
 import { scale, verticalScale, moderateScale } from '../../utils/responsive';
 import { PROFILE_KEY } from '../main/HomeScreen';
 import { toast, Toaster } from 'sonner-native';
 import Modal from 'react-native-modal';
 import InputField from '../../components/common/InputField';
 import eventsService from '../../services/api/eventsService';
-import { getProfileImage } from '../../utils/profileImage';
+import { getProfileImage, SETTINGS_IMAGE_KEY } from '../../utils/profileImage';
 
 const ADMIN_CODE_KEY = 'ADMIN_CODE_KEY';
 
@@ -171,7 +164,6 @@ export default function SettingsScreen({ navigation }) {
     businessName: '',
     phone: '',
   });
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [deleteModal, setDeleteModal] = useState(false);
   const [adminCodeModal, setadminCodeModal] = useState(false);
   const [admincode, setadmincode] = useState('');
@@ -179,20 +171,6 @@ export default function SettingsScreen({ navigation }) {
   const [activatingAdmin, setActivatingAdmin] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [selectedImage, setSelectedImage] = useState('');
-
-  useFocusEffect(
-    React.useCallback(() => {
-      const loadImage = async () => {
-        const savedImage = await getProfileImage();
-
-        if (savedImage) {
-          setSelectedImage(savedImage);
-        }
-      };
-
-      loadImage();
-    }, []),
-  );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -227,11 +205,14 @@ export default function SettingsScreen({ navigation }) {
           const savedCode = await AsyncStorage.getItem(ADMIN_CODE_KEY);
 
           setIsAdminActivated(!!savedCode);
-          const savedImage = await getProfileImage();
 
-          if (savedImage) {
-            setSelectedImage(savedImage);
-          }
+          // ─────────────────────────────
+          // LOAD PROFILE IMAGE
+          // ─────────────────────────────
+
+          const savedImage = await getProfileImage();
+          setSelectedImage(savedImage || '');
+          
         } catch (err) {
           setIsAdminActivated(false);
         }
@@ -284,7 +265,7 @@ export default function SettingsScreen({ navigation }) {
       }
 
       // Save locally
-      await AsyncStorage.setItem(ADMIN_CODE_KEY, admincode.trim());
+      await AsyncStorage.setItem(ADMIN_CODE_KEY, 'ADMIN_ACTIVATED');
 
       // Activate
       setIsAdminActivated(true);
@@ -307,7 +288,11 @@ export default function SettingsScreen({ navigation }) {
     try {
       // Remove both profile + admin access
 
-      await AsyncStorage.multiRemove([PROFILE_KEY, ADMIN_CODE_KEY]);
+      await AsyncStorage.multiRemove([
+        PROFILE_KEY,
+        ADMIN_CODE_KEY,
+        SETTINGS_IMAGE_KEY,
+      ]);
 
       // Reset profile
 
@@ -317,6 +302,7 @@ export default function SettingsScreen({ navigation }) {
         phone: '',
       });
 
+      setSelectedImage('');
       // Disable admin mode
       setIsAdminActivated(false);
       // Close modal
@@ -343,8 +329,8 @@ export default function SettingsScreen({ navigation }) {
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 9999,
-          elevation: 9999,
+          zIndex: 100,
+          elevation: 100,
           pointerEvents: 'box-none',
         }}
       >
@@ -474,7 +460,7 @@ export default function SettingsScreen({ navigation }) {
               }}
             >
               {selectedImage ? (
-                <Image
+                <FastImage
                   source={{ uri: selectedImage }}
                   style={{
                     width: '100%',
@@ -994,7 +980,7 @@ export default function SettingsScreen({ navigation }) {
                   }}
                 >
                   <LinearGradient
-                    colors={['#00C853', '#B2FF59']}
+                    colors={['#00C853', '#00E676']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={{
